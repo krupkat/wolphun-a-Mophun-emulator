@@ -169,8 +169,22 @@ wolphun-android-emulator
 wolphun-android-install
 # Copy your own games onto the emulated phone:
 adb push /path/to/game.mpn /sdcard/Download/
+# Publish ADB-pushed files to Android's file index so the picker can see them:
+adb shell content call --uri content://media --method scan_file --arg /sdcard/Download/game.mpn
 # Then tap + in the app and select the file from Downloads.
 ```
+
+To import a whole folder, copy and scan it before using the app's **+** button:
+
+```sh
+adb push games /sdcard/Download/
+adb shell content call --uri content://media --method scan_file --arg /sdcard/Download/games
+```
+
+In the picker, open **Downloads → games**, long-press a file, and use **Select all**
+(if available), then **Open**. On Android 16, ADB-pushed files can remain marked as
+pending and appear hidden until scanned; rescanning the folder makes its contents
+available without copying them again.
 
 Both shells use Nixpkgs `androidenv` and explicitly accept Google's SDK licenses.
 If your installation has no Nixpkgs channel in `NIX_PATH`, add

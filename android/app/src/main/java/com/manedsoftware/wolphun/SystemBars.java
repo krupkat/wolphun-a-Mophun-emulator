@@ -18,7 +18,8 @@ final class SystemBars {
         // Include AppCompat's action bar as well as the activity's content.
         View content = activity.findViewById(android.R.id.content);
         View root = (View) content.getParent();
-        if(activity instanceof androidx.appcompat.app.AppCompatActivity){
+        boolean appCompat = activity instanceof androidx.appcompat.app.AppCompatActivity;
+        if(appCompat){
             // In edge-to-edge mode AppCompat sends the action bar's height to the
             // content as a legacy system-window inset, rather than a top margin.
             final int cl = content.getPaddingLeft(), ct = content.getPaddingTop();
@@ -39,8 +40,10 @@ final class SystemBars {
             view.setPadding(left + bars.left, top + bars.top, right + bars.right, bottom + bars.bottom);
             // Preserve AppCompat's own inset handling: it also reserves the action bar's
             // height above the content. Consuming everything here puts the first row under it.
-            return ViewCompat.onApplyWindowInsets(view,
+            if(appCompat) return ViewCompat.onApplyWindowInsets(view,
                 windowInsets.inset(bars.left, bars.top, bars.right, bars.bottom));
+            // The fullscreen game's native decor would reset our padding if delegated to.
+            return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(root);
     }

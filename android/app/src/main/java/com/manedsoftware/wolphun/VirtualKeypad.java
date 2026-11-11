@@ -254,8 +254,8 @@ public final class VirtualKeypad {
                 float bx = land ? u*2.0f : u*2.2f;
                 float by = land ? cyL     : viewH - u*2.2f;
                 layDpad (bx, by, u);
-                // Keep the action cluster a little lower than the d-pad in landscape.
-                layAcoes(viewW - u*2.4f, land ? by + u*0.8f : by, u);
+                // One right-hand column: MENU, EXIT, BACK, OK (with B to the left).
+                layAcoes(viewW - u*1.85f, viewH - u*1.8f, u);
                 layAndar(bx, by - u*2.6f, u);
                 laySystemButtons(u); return;
             }
@@ -332,12 +332,22 @@ public final class VirtualKeypad {
         return Math.min(cx, viewW - u*1.6f - cell*1.82f);
     }
 
-    /** Menu above EXIT in the bottom-right controls; move and scale the pair as one group. */
+    /** Gamepad defaults: MENU/EXIT above BACK/OK. Saved system positions still take priority. */
     private void laySystemButtons(float u){
         int g = GRP_SYSTEM;
         float size = Math.min(u * 1.2f * grpS(g), Math.min(viewW, viewH) / 2.75f);
         float margin = size * 0.25f;
-        float ax = ancX(g, viewW - size*0.75f), ay = ancY(g, viewH - size*0.75f);
+        float defX = viewW - size*0.75f, defY = viewH - size*0.75f;
+        for(Btn b: btns) if((preset==LAY_AUTO || preset==LAY_GAMEPAD)
+                && b.bit==Screen.SELECT && b.visible && b.grp==GRP_ACT
+                && b.rect.top >= size*2.95f){
+            // Match BACK's center, leaving a gap of 0.45 button diameters above it.
+            // Phone/mixed presets keep their own arrangement; custom layouts need headroom.
+            defX = b.rect.centerX();
+            defY = b.rect.top - size*0.95f;
+            break;
+        }
+        float ax = ancX(g, defX), ay = ancY(g, defY);
         // Keep the menu reachable even after moving/scaling the group in the editor.
         ax = Math.max(size/2 + margin, Math.min(viewW - size/2 - margin, ax));
         ay = Math.max(size*1.75f + margin, Math.min(viewH - size/2 - margin, ay));

@@ -158,6 +158,8 @@ only on Android 7–9; it is not available under modern scoped-storage rules.
 # Terminal 1: compile the debug APK, including the native SoundFont library.
 nix-shell android-build.nix
 wolphun-android-build
+# Or use Nix-provided Gradle directly (no gradlew):
+# gradle -p android :app:assembleDebug
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 
 # Terminal 2: boot Android 16, install the APK and open the library.
@@ -173,15 +175,20 @@ adb push /path/to/game.mpn /sdcard/Download/
 Both shells use Nixpkgs `androidenv` and explicitly accept Google's SDK licenses.
 If your installation has no Nixpkgs channel in `NIX_PATH`, add
 `-I nixpkgs=flake:nixpkgs` to `nix-shell`.
-The build shell uses **JDK 21**, **Gradle 8.14.6**, **Android Gradle Plugin 8.13.2**,
+The build shell uses **JDK 21**, **Nix-provided Gradle 8.x** (currently 8.14.6), **Android Gradle Plugin 8.13.2**,
 **SDK 36 / build tools 36.0.0**, **CMake 3.22.1**, and **NDK 28.2.13676358**.
 These SDK/tool versions are available through [Nixpkgs unstable](https://search.nixos.org/packages?channel=unstable&query=androidenv).
 [AGP 8.13 supports API 36 and requires Gradle 8.13+ / JDK 17+](https://developer.android.com/build/releases/past-releases/agp-8-13-0-release-notes).
 The `wolphunNdkVersion` Gradle property remains available as an override; its default
 now matches the shell. NDK r28 and the modern AGP support 16 KB native-library/page
-alignment. The wrapper verifies its Gradle distribution with a pinned SHA-256 checksum.
-The build shell regenerates the gitignored `android/local.properties` with Nix SDK/CMake paths;
-the first build needs network access for Gradle and Maven dependencies.
+alignment. `wolphun-android-build` invokes Nix's Gradle directly, so it does not
+run `gradlew` or download a Gradle distribution during the build. The wrapper is
+retained for non-Nix users, with its distribution checksum pinned.
+The build shell regenerates the gitignored `android/local.properties` with Nix SDK/CMake paths.
+AGP, AndroidX, Material and their transitive Maven dependencies are still resolved
+by Gradle from Google Maven and Maven Central into `~/.gradle/caches/` (or
+`$GRADLE_USER_HOME/caches/`). Uncached dependencies require network access;
+`wolphun-android-build --offline` works only after all required dependencies are cached.
 
 The emulator shell targets **x86_64 Linux with KVM**; your user needs read/write
 access to `/dev/kvm` (normally through the NixOS `kvm` group). It uses

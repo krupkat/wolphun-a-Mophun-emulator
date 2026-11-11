@@ -16,6 +16,8 @@
 let
   # Gradle 8.14 / AGP 8.13 support Java 21 (AGP requires at least Java 17).
   jdk = pkgs.jdk21_headless;
+  # Use the CLI without the setup hooks intended for sandboxed Gradle derivations.
+  gradle = (pkgs.gradle_8.override { java = jdk; }).unwrapped;
   buildToolsVersion = "36.0.0";
   ndkVersion = "28.2.13676358";
   cmakeVersion = "3.22.1";
@@ -37,14 +39,17 @@ let
   sdkRoot = "${sdk}/libexec/android-sdk";
 
   build = pkgs.writeShellScriptBin "wolphun-android-build" ''
-    # Use the checked-in wrapper, not an unrelated Gradle from nixpkgs.
-    exec ${pkgs.bash}/bin/bash ${pkgs.lib.escapeShellArg "${projectDir}/gradlew"} \
+    # Gradle itself is provided by Nix; do not invoke/download through gradlew.
+    exec ${gradle}/bin/gradle \
       -p ${pkgs.lib.escapeShellArg projectDir} :app:assembleDebug "$@"
   '';
 in
+assert pkgs.lib.assertMsg
+  (pkgs.lib.versionAtLeast gradle.version "8.13" && pkgs.lib.versionOlder gradle.version "9")
+  "AGP 8.13 requires Gradle 8.13+ in the 8.x series; use a newer Nixpkgs.";
 pkgs.mkShellNoCC {
   name = "wolphun-android-build";
-  packages = [ jdk sdk pkgs.unzip build ];
+  packages = [ jdk gradle sdk pkgs.unzip build ];
 
   JAVA_HOME = jdk.home;
   ANDROID_HOME = sdkRoot;
@@ -55,6 +60,8 @@ pkgs.mkShellNoCC {
 
   shellHook = ''
     # Maven's unpatched aapt2 executable cannot run directly on NixOS.
+    # AGP labels this override experimental and warns about it; retain it so
+    # resource compilation uses Nix's patched executable. Do not suppress warnings.
     export GRADLE_OPTS="''${GRADLE_OPTS:+$GRADLE_OPTS }-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/${buildToolsVersion}/aapt2"
 
     # Some Android CMake packages append a build number to their directory.
@@ -69,6 +76,7 @@ pkgs.mkShellNoCC {
 
     echo 'Run: wolphun-android-build'
     echo 'APK: android/app/build/outputs/apk/debug/app-debug.apk'
-    echo 'First build downloads Gradle and Maven dependencies (network required).'
+    echo 'Gradle is provided by Nix (no Gradle wrapper download).'
+    echo 'Uncached Maven dependencies still require network access.'
   '';
 }

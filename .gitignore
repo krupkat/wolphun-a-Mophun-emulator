@@ -8,6 +8,7 @@ desktop/*.zip
 # ---- android build outputs ----
 android/build/
 android/app/build/
+android/app/.cxx/
 android/.gradle/
 android/.idea/
 android/local.properties

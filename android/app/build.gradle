@@ -3,7 +3,8 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
-    ndkVersion '30.0.16138531 rc3'       // NDK instalado (synth de SoundFont em C)
+    // The Nix build shell selects a stable NDK compatible with AGP 3.6.4.
+    ndkVersion project.findProperty('wolphunNdkVersion') ?: '30.0.16138531 rc3'
 
     defaultConfig {
         applicationId "com.manedsoftware.wolphun"

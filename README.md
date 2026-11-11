@@ -142,9 +142,43 @@ package-exe.bat      REM uses jpackage (JDK 14+)
 ```
 On Linux, `make-deb-linux.bat` builds a `.deb` (it needs only a JDK — no dpkg-deb, no WSL).
 
-### Android (Android Studio)
+### Android
 Open the **`android/`** folder in Android Studio and press **Run**. `minSdk 24` (Android 7.0).
 Add your `.mpn` files to the app's ROMs folder or `/sdcard/mophun`, or import them with the **“+”** button.
+
+**NixOS — separate build and emulator shells** (commands from the repository root):
+
+```sh
+# Terminal 1: compile the debug APK, including the native SoundFont library.
+nix-shell android-build.nix
+wolphun-android-build
+# Output: android/app/build/outputs/apk/debug/app-debug.apk
+
+# Terminal 2: boot Android 10, install the APK and open the library.
+nix-shell android-emulator.nix
+wolphun-android-emulator
+# After rebuilding, update the running emulator without deleting app data:
+wolphun-android-install
+# Copy your own games onto the emulated phone:
+adb shell mkdir -p /sdcard/mophun
+adb push /path/to/game.mpn /sdcard/mophun/
+```
+
+Both shells use Nixpkgs `androidenv` and explicitly accept Google's SDK licenses.
+If your installation has no Nixpkgs channel in `NIX_PATH`, add
+`-I nixpkgs=flake:nixpkgs` to `nix-shell`.
+The build shell uses JDK 11 for Gradle 5.6.4, SDK/build tools 29/29.0.3,
+CMake 3.10.2, and NDK 21.4 through the `wolphunNdkVersion` Gradle property.
+It regenerates the gitignored `android/local.properties` with Nix SDK/CMake paths;
+the first build needs network access for Gradle and Maven dependencies.
+
+The emulator shell targets **x86_64 Linux with KVM**; your user needs read/write
+access to `/dev/kvm` (normally through the NixOS `kvm` group). It uses
+`androidenv.emulateApp` and stores its virtual device under
+`~/.local/share/wolphun-android/`. The APK is read at launch, not copied into the
+Nix store. Set `NIX_ANDROID_EMULATOR_FLAGS` to pass emulator options, for example
+`-no-window -gpu software` for a headless session. With multiple ADB devices,
+set `ANDROID_SERIAL` before running the install or ROM-import commands.
 
 ### Symbian S60 3rd Edition
 No build needed to use it — copy the right package from [`symbian/bin/`](symbian/bin) to the

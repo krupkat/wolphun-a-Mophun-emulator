@@ -29,6 +29,7 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     private Bitmap frame;
     private final Rect src = new Rect();
     private final Rect dst = new Rect();
+    private final GameViewport viewport = new GameViewport();
     private final Paint blit = new Paint();
     private final VirtualKeypad keypad = new VirtualKeypad();
     private final SparseIntArray pointerBit = new SparseIntArray();
@@ -142,7 +143,8 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
             src.set(0,0,w,h);
             pixelBuf = new int[w*h];
         }
-        blit.setFilterBitmap(s.rs>1);                     // downscale do buffer HD -> bilinear (anti-aliasing)
+        // Pixel-perfect mode always uses nearest-neighbor, including with HD rendering enabled.
+        blit.setFilterBitmap(!pixelPerfect && s.rs>1);
         boolean has = s.copyPresented(pixelBuf);          // frame COMPLETO (sem tearing)
         if(has){ frame.setPixels(pixelBuf, 0, w, 0, 0, w, h); everPresented = true; }
 
@@ -153,8 +155,8 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         try {
             c.drawColor(Color.BLACK);
             if(has){
-                computeDst(vw, vh, w, h);
-                c.drawBitmap(frame, src, dst, blit);
+                computeDst(vw, vh, s.w, s.h);
+                drawGame(c, frame, vw);
             }
             keypad.draw(c, s, menuDown, editMode);
         } finally {
@@ -176,36 +178,44 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         try {
             Bitmap f = frame;
             if(everPresented && f != null && !f.isRecycled() && vw > 0 && vh > 0){
-                computeDst(vw, vh, f.getWidth(), f.getHeight());
+                computeDst(vw, vh, s.w, s.h);
                 final Rect area = new Rect(dst);        // onde o jogo esta na tela
                 if(capControls){
                     out = Bitmap.createBitmap(vw, vh, Bitmap.Config.ARGB_8888);
                     Canvas cc = new Canvas(out);
                     cc.drawColor(Color.BLACK);
-                    cc.drawBitmap(f, src, area, blit);
+                    drawGame(cc, f, vw);
                     keypad.draw(cc, s, false, false);   // sem realce de tecla pressionada
-                } else {
-                    final int w = Math.max(1, area.width()), h = Math.max(1, area.height());
-                    out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                } else if(area.intersect(0, 0, vw, viewport.availableHeight)){
+                    out = Bitmap.createBitmap(area.width(), area.height(), Bitmap.Config.ARGB_8888);
                     Canvas cc = new Canvas(out);
-                    cc.drawBitmap(f, src, new Rect(0, 0, w, h), blit);
+                    Rect target = new Rect(dst);
+                    target.offset(-area.left, -area.top);
+                    cc.drawBitmap(f, src, target, blit);
                 }
             }
         } catch(Throwable t){ out = null; }             // sem memoria p/ o bitmap, p.ex.
         try { cb.onCaptured(out); } catch(Throwable ignore){}
     }
 
-    // letterbox preservando proporção. Em RETRATO joga a tela do jogo p/ CIMA e reserva
-    // ~34% embaixo p/ os controles (assim o jogo não fica atrás dos botões).
+    // Use the original game resolution, not the supersampled HD framebuffer, for integer scaling.
     private void computeDst(int vw, int vh, int w, int h){
-        boolean portrait = vh > vw;
-        int gameH = portrait ? Math.round(vh * screenTopFraction) : vh;
-        float s = Math.min((float)vw/w, (float)gameH/h);
-        int dw = Math.round(w*s), dh = Math.round(h*s);
-        int ox = (vw-dw)/2;
-        int oy = portrait ? 0 : (vh-dh)/2;   // retrato: alinhado ao topo; paisagem: centralizado
-        dst.set(ox, oy, ox+dw, oy+dh);
+        viewport.fit(vw, vh, w, h, screenTopFraction, pixelPerfect);
+        dst.set(viewport.left, viewport.top, viewport.left+viewport.width, viewport.top+viewport.height);
     }
+
+    private void drawGame(Canvas canvas, Bitmap bitmap, int viewWidth){
+        int save = canvas.save();
+        try {
+            canvas.clipRect(0, 0, viewWidth, viewport.availableHeight);
+            canvas.drawBitmap(bitmap, src, dst, blit);
+        } finally {
+            canvas.restoreToCount(save);
+        }
+    }
+
+    private volatile boolean pixelPerfect = true;
+    public void setPixelPerfect(boolean on){ pixelPerfect = on; }
     // fração da altura (em retrato) reservada para a tela do jogo; o resto é a zona de controles.
     private volatile float screenTopFraction = 0.66f;
     public void setScreenTopFraction(float f){ screenTopFraction = Math.max(0.4f, Math.min(1.0f, f)); }

@@ -12,5 +12,7 @@
     <string name="favorite">Favorite</string>
     <string name="show_favorites">Show only favorites</string>
     <string name="settings_sound">Sound</string>
+    <string name="pixel_perfect">Pixel perfect</string>
+    <string name="pixel_perfect_hint">Use whole-number scaling and nearest-neighbor filtering. May leave black borders. If 1× cannot fit, the image is cropped.</string>
     <string name="settings_device">Device model:</string>
 </resources>

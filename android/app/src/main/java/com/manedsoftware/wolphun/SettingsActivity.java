@@ -30,7 +30,7 @@ import java.util.HashMap;
 public final class SettingsActivity extends AppCompatActivity {
     private static final int REQ_SOUNDFONT = 1002;
     private PrefsConfig cfg;
-    private Switch soundSw, reverbSw, vibrateSw;
+    private Switch soundSw, reverbSw, vibrateSw, pixelPerfectSw;
     private Button soundfontBtn;
     private Spinner deviceSp, texFilterSp;
     private SeekBar gammaSb, fpsSb, screenSb, fontSb, hdSb;
@@ -76,6 +76,10 @@ public final class SettingsActivity extends AppCompatActivity {
         reverbSw.setChecked(cfg.reverb);
         vibrateSw.setText(Lang.t("lbl.vibrate"));
         vibrateSw.setChecked(cfg.vibrate);
+        pixelPerfectSw = findViewById(R.id.pixelPerfect);
+        pixelPerfectSw.setText(Lang.t("lbl.pixelperfect"));
+        pixelPerfectSw.setChecked(cfg.pixelPerfect);
+        ((TextView)findViewById(R.id.pixelPerfectHint)).setText(Lang.t("pixelperfect.hint"));
 
         soundfontBtn = findViewById(R.id.soundfont);
         updateSoundfontBtn();
@@ -347,6 +351,7 @@ public final class SettingsActivity extends AppCompatActivity {
         cfg.gamma = 0.40 + gammaSb.getProgress()/100.0;
         cfg.targetFps = 1 + fpsSb.getProgress();
         cfg.screenTop = 0.50f + screenSb.getProgress()/100f;
+        cfg.pixelPerfect = pixelPerfectSw.isChecked();
         cfg.fontScale = 1.0 + fontSb.getProgress()/100.0;
         cfg.renderScale = 1 + hdSb.getProgress();
         cfg.texFilter = texFilterSp.getSelectedItemPosition();

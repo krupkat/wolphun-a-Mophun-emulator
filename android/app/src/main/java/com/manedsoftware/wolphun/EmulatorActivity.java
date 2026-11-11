@@ -46,6 +46,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
         view = new EmulatorView(this);
         view.setMenuListener(this);
         view.setScreenTopFraction(cfg.screenTop);   // sobe a tela do jogo (não fica atrás dos botões)
+        view.setPixelPerfect(cfg.pixelPerfect);
         view.importKeypad(PrefsConfig.getKeypad(this, gameName));   // layout de teclado customizado deste jogo
         view.setWalkKeys(PrefsConfig.walkKeys(gameName));   // 2/3 = andar esq/dir (Bomb Jack)
         view.setLayoutPreset(PrefsConfig.getLayoutPreset(this, gameName));

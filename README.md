@@ -109,6 +109,11 @@ runs inside each tick rather than just capping frames.
 - **Per-ROM phone-key detection** — the loader statically analyses the game and shows only
   the handset keys it actually reads, so the keypad is not cluttered with dead buttons.
 - **Screenshots** and **texture filter**, matching the desktop.
+- **Pixel-perfect display** — enabled by default in Android settings. Uses integer
+  multiples of the original game resolution and nearest-neighbor display filtering,
+  including with HD rendering enabled. Leaves black borders when needed; if even
+  1× cannot fit, crops rather than fractionally shrinking. Disable it to restore
+  fractional fit-to-area scaling.
 - **Bulk ROM import** and a clearer empty-library screen.
 - **Favorites** — long-press a game to add/remove it from favorites. A heart marks
   favorite games; tap the heart in the top bar to switch between all games and
@@ -167,6 +172,8 @@ wolphun-android-build
 # Or use Nix-provided Gradle directly (no gradlew):
 # gradle -p android :app:assembleDebug
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
+# Display-geometry regression tests (JDK only; no Maven dependencies):
+bash android/tests/run-viewport-tests.sh
 
 # Terminal 2: boot Android 16, install the APK and open the library.
 nix-shell android-emulator.nix

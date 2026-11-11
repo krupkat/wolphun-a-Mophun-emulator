@@ -24,6 +24,7 @@ public final class PrefsConfig {
     // ---- filtro de textura 3D (VMGP3D_FILTERMODE, estado 13) ----
     // 0 = segue o jogo; 1 = forca bilinear (suaviza); 2 = forca nearest (nitido, como o hardware).
     public int texFilter = 0;
+    public boolean pixelPerfect = true;  // integer display scaling + nearest-neighbor filtering
     public float screenTop = 0.66f;      // fração da altura (retrato) p/ a tela do jogo; resto = controles
     public String language = "en";       // idioma padrao da interface (Lang)
     // ---- aparencia (tema visual: cores + fonte) ----
@@ -100,6 +101,7 @@ public final class PrefsConfig {
         c.texFilter = p.getInt("texFilter", c.texFilter);
         c.gamma = (double) p.getFloat("gamma", (float)c.gamma);
         c.fontScale = (double) p.getFloat("fontScale", (float)c.fontScale);
+        c.pixelPerfect = p.getBoolean("pixelPerfect", c.pixelPerfect);
         c.screenTop = p.getFloat("screenTop", c.screenTop);
         c.language = p.getString("language", c.language);
         c.theme = p.getString("theme", c.theme);
@@ -115,7 +117,7 @@ public final class PrefsConfig {
         SharedPreferences.Editor e = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
         e.putInt("scale", scale).putBoolean("sound", sound).putBoolean("reverb", reverb).putBoolean("vibrate", vibrate).putInt("deviceModel", deviceModel)
          .putInt("width", width).putInt("height", height).putInt("targetFps", targetFps).putInt("renderScale", renderScale).putInt("texFilter", texFilter)
-         .putFloat("gamma", (float)gamma).putFloat("fontScale", (float)fontScale).putFloat("screenTop", screenTop).putString("language", language)
+         .putFloat("gamma", (float)gamma).putFloat("fontScale", (float)fontScale).putFloat("screenTop", screenTop).putBoolean("pixelPerfect", pixelPerfect).putString("language", language)
          .putString("theme", theme).putInt("uiBg", uiBg).putInt("uiPanel", uiPanel).putInt("uiFg", uiFg).putInt("uiAccent", uiAccent)
          .putString("uiFont", uiFont).putFloat("uiFontScale", uiFontScale)
          .putString("soundFont", soundFont==null?"":soundFont).apply();

@@ -100,6 +100,8 @@ public final class Lang {
         p("font.sans","Sans","Sans","Sans","Sans","Без засічок","Без засечек");
         p("font.serif","Serif","Serif","Serif","Serif","Із засічками","С засечками");
         p("font.mono","Monospace","Monoespaciada","Monospace","Monoespaçada","Моноширинний","Моноширинный");
+        p("lbl.pixelperfect","Pixel perfect","Píxel perfecto","Pixelgenau","Pixel perfeito","Піксельна точність","Пиксельная точность");
+        p("pixelperfect.hint","Use whole-number scaling and nearest-neighbor filtering. May leave black borders. If 1× cannot fit, the image is cropped.","Usa escalado entero y filtro de vecino más cercano. Puede dejar bordes negros. Si no cabe a 1×, se recorta la imagen.","Ganzzahlige Skalierung mit Nächster-Nachbar-Filterung. Schwarze Ränder sind möglich. Passt das Bild nicht bei 1×, wird es beschnitten.","Usa escala inteira e filtro de vizinho mais próximo. Pode deixar bordas pretas. Se não couber em 1×, a imagem será cortada.","Цілочисельне масштабування та фільтр найближчого сусіда. Можливі чорні поля. Якщо зображення не вміщується при 1×, його буде обрізано.","Целочисленное масштабирование и фильтр ближайшего соседа. Возможны чёрные поля. Если изображение не помещается при 1×, оно обрезается.");
         p("lbl.screen","Game screen height:","Altura de la pantalla:","Bildschirmhoehe:","Altura da tela:","Висота екрана:","Высота экрана:");
         p("lbl.fontsize","In-game font size:","Tamaño de fuente (juego):","Schriftgröße (Spiel):","Tamanho da fonte (jogo):","Розмір шрифту (гра):","Размер шрифта (игра):");
         p("lbl.hd","3D render scale (HD):","Escala de render 3D (HD):","3D-Renderskalierung (HD):","Escala de render 3D (HD):","Масштаб рендера 3D (HD):","Масштаб рендера 3D (HD):");

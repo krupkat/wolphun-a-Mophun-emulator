@@ -113,6 +113,9 @@ runs inside each tick rather than just capping frames.
 - **Favorites** — long-press a game to add/remove it from favorites. A heart marks
   favorite games; tap the heart in the top bar to switch between all games and
   favorites only. Favorites and the selected filter persist between launches.
+- **Automatic light/dark appearance** — select **Settings → Appearance → Theme →
+  System (native)** to follow Android's system setting. Explicit presets and custom
+  themes stay fixed.
 
 ### Both GUIs
 

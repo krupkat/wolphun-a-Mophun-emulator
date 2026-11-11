@@ -1,6 +1,8 @@
 package com.manedsoftware.wolphun;
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
@@ -12,6 +14,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.content.res.ColorStateList;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import java.util.WeakHashMap;
 
 /**
@@ -30,8 +33,7 @@ public final class Theme {
         this.fg=0xFF000000|fg; this.accent=0xFF000000|accent; this.font=font;
     }
 
-    // presets prontos (id, fundo, painel, texto, destaque, fonte) — iguais ao desktop.
-    // "system" aqui e um tema CLARO nativo (o app base e Light) p/ o preview funcionar.
+    // Fixed presets plus the light half of "system"; its dark palette is selected at runtime.
     public static final Theme[] PRESETS = {
         new Theme("system",  0xFAFAFA, 0xFFFFFF, 0x1B1D21, 0xE8451F, "SansSerif"),
         new Theme("wolphun", 0x232228, 0x2E2C34, 0xF0EDE6, 0xE8451F, "SansSerif"),
@@ -42,6 +44,9 @@ public final class Theme {
         new Theme("ocean",   0x0C1E2E, 0x143049, 0xD3EBFA, 0x2BA6DE, "SansSerif"),
         new Theme("purple",  0x150A20, 0x221033, 0xEBD9FF, 0xA855F7, "SansSerif"),
     };
+
+    private static final Theme SYSTEM_DARK =
+        new Theme("system", 0x121212, 0x1F1F1F, 0xE6E6E6, 0xE8451F, "SansSerif");
 
     /** ids na ordem de exibicao (system, presets..., custom). */
     public static String[] ids(){
@@ -54,11 +59,27 @@ public final class Theme {
     public static Theme custom(PrefsConfig c){
         return new Theme("custom", c.uiBg, c.uiPanel, c.uiFg, c.uiAccent, c.uiFont);
     }
-    public static Theme resolve(PrefsConfig c){ return byId(c.theme, c); }
-    public static Theme byId(String id, PrefsConfig c){
+    private static Theme fixedTheme(String id, PrefsConfig c){
         if("custom".equals(id)) return custom(c);
-        for(Theme t: PRESETS) if(t.id.equals(id)) return t;
-        return PRESETS[0];   // system
+        for(Theme t: PRESETS) if(!"system".equals(t.id) && t.id.equals(id)) return t;
+        return null;   // "system" (or an unknown preset) follows Android.
+    }
+    public static Theme resolve(Context ctx, PrefsConfig c){ return byId(ctx, c.theme, c); }
+    public static Theme byId(Context ctx, String id, PrefsConfig c){
+        Theme fixed = fixedTheme(id, c);
+        if(fixed!=null) return fixed;
+        boolean night = (ctx.getResources().getConfiguration().uiMode
+            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        return night ? SYSTEM_DARK : PRESETS[0];
+    }
+
+    /** Configure native widgets/dialogs too, not only the manually painted content. */
+    public static void configureNightMode(AppCompatActivity activity, PrefsConfig cfg){
+        Theme fixed = fixedTheme(cfg.theme, cfg);
+        int mode = fixed==null ? AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            : (contrast(fixed.bg)==0xFFFFFFFF ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+        if(activity.getDelegate().getLocalNightMode()!=mode)
+            activity.getDelegate().setLocalNightMode(mode);
     }
 
     /** cor de texto legivel (preto/branco) sobre uma cor. */
@@ -78,7 +99,8 @@ public final class Theme {
 
     /** aplica o tema (cores+fonte+escala) a uma Activity inteira (arvore de Views + ActionBar). */
     public static void apply(Activity a, PrefsConfig cfg){
-        Theme t = resolve(cfg);
+        if(a instanceof AppCompatActivity) configureNightMode((AppCompatActivity)a, cfg);
+        Theme t = resolve(a, cfg);
         Typeface tf = typeface(t.font);
         float scale = cfg.uiFontScale;
         View root = a.findViewById(android.R.id.content);

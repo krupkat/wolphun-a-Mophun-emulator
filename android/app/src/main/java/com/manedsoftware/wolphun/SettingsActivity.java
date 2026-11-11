@@ -46,11 +46,12 @@ public final class SettingsActivity extends AppCompatActivity {
     private final HashMap<Button,Integer> swColor = new HashMap<Button,Integer>();
 
     @Override protected void onCreate(Bundle b){
+        cfg = PrefsConfig.load(this);
+        Theme.configureNightMode(this, cfg);
         super.onCreate(b);
         setContentView(R.layout.activity_settings);
         SystemBars.apply(this);
         if(getSupportActionBar()!=null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        cfg = PrefsConfig.load(this);
         Lang.setByCode(cfg.language);
         setTitle(Lang.t("menu.settings"));
 
@@ -254,9 +255,11 @@ public final class SettingsActivity extends AppCompatActivity {
     }
 
     private void onThemePicked(int pos){
+        boolean changed = !themeIds[pos].equals(cfg.theme);
         cfg.theme = themeIds[pos];
-        if(!"custom".equals(cfg.theme)){
-            Theme t = Theme.byId(cfg.theme, cfg);        // reflete a fonte do preset no spinner
+        // Spinner initialization after a night-mode recreation must not reset the saved font.
+        if(changed && !"custom".equals(cfg.theme)){
+            Theme t = Theme.byId(this, cfg.theme, cfg);  // reflete a fonte do preset no spinner
             cfg.uiFont = t.font;
             int fi=0; for(int i=0;i<FONT_IDS.length;i++) if(FONT_IDS[i].equals(cfg.uiFont)) fi=i;
             if(fontSpin.getSelectedItemPosition()!=fi) fontSpin.setSelection(fi);
@@ -268,7 +271,7 @@ public final class SettingsActivity extends AppCompatActivity {
     private void liveApply(){ Theme.apply(this, cfg); }  // swatches sao 'themeSwatch' -> nao repintados
 
     private void refreshSwatches(){
-        Theme t = Theme.byId(cfg.theme, cfg);            // custom -> usa cfg.ui*
+        Theme t = Theme.byId(this, cfg.theme, cfg);      // custom -> usa cfg.ui*
         setSwatch(swBg, t.bg); setSwatch(swPanel, t.panel); setSwatch(swText, t.fg); setSwatch(swAccent, t.accent);
     }
     private void setSwatch(Button b, int argb){

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/wolphun_orange</item>
         <item name="colorPrimaryDark">@color/wolphun_orange_dark</item>
         <item name="colorAccent">@color/wolphun_orange</item>

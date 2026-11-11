@@ -44,8 +44,9 @@ public final class LibraryActivity extends AppCompatActivity {
     private boolean favoritesOnly;
 
     @Override protected void onCreate(Bundle b){
-        super.onCreate(b);
         cfg = PrefsConfig.load(this);
+        Theme.configureNightMode(this, cfg);
+        super.onCreate(b);
         favoritesOnly = PrefsConfig.getFavoritesOnly(this);
         Lang.setByCode(cfg.language);
         setContentView(R.layout.activity_library);
@@ -463,7 +464,7 @@ public final class LibraryActivity extends AppCompatActivity {
                   if(tf.isFile()) thumb = android.graphics.BitmapFactory.decodeFile(tf.getAbsolutePath()); } catch(Throwable t){}
             if(thumb!=null) h.icon.setImageBitmap(thumb); else h.icon.setImageResource(R.drawable.wolphun_logo);
             // cores/fonte do tema nos itens da lista
-            Theme t = Theme.resolve(cfg);
+            Theme t = Theme.resolve(LibraryActivity.this, cfg);
             android.graphics.Typeface tf = Theme.typeface(t.font);
             h.title.setTextColor(t.fg); h.title.setTypeface(tf, android.graphics.Typeface.BOLD);
             h.subtitle.setTextColor((t.fg & 0x00FFFFFF) | 0x99000000); h.subtitle.setTypeface(tf);

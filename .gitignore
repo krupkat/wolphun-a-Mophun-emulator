@@ -18,6 +18,7 @@ android/.cxx/
 
 # ---- game ROMs / user data (never commit) ----
 *.mpn
+*.mpn.bak
 saves/
 
 # ---- OS ----

@@ -19,6 +19,17 @@ public final class Sdk {
     // liga o recorte so no HC2, que precisa dele. Escape manual: FMT7TRANSP=1 / FMT7TRANSP=0.
     final Pip2 vm; final Screen scr;
     long tick0 = System.currentTimeMillis();
+    // Optional guest calendar override; elapsed-time/tick APIs keep their normal speed.
+    // Example: java -Dwolphun.date=2005-01-01 ...
+    private final long calendarOffset = calendarOffset();
+    private static long calendarOffset(){
+        String date = System.getProperty("wolphun.date");
+        if(date == null) return 0;
+        long target = java.time.LocalDate.parse(date).atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant().toEpochMilli();
+        return target - System.currentTimeMillis();
+    }
+    private long calendarMillis(){ return System.currentTimeMillis() + calendarOffset; }
     // VTICK=<passo>: tempo VIRTUAL (avanca <passo> ms por vGetTickCount). Headless roda muito mais
     // rapido que o relogio real, entao intros presas em while(vGetTickCount()<alvo) queimavam dezenas
     // de milhoes de instrucoes so esperando. So para teste: muda o ritmo do jogo.
@@ -177,7 +188,7 @@ public final class Sdk {
             case "vMemFree": case "vMaxFreeBlock": case "vMemAvail": vm.ret((vm.heapEnd - nextHeap) + freeBytes); break;
             // ---------- sistema ----------
             case "vGetTickCount": if(virtualTick>=0){ virtualTick+=virtualTickStep; vm.ret((int)virtualTick); } else vm.ret((int)(System.currentTimeMillis()-tick0)); break;
-            case "vGetTime": vm.ret((int)(System.currentTimeMillis()/1000L)); break;   // segundos desde 1970 (epoch UTC). Football Pro usa p/ seed/relogio; antes caia no default=0 -> logica de tempo quebrava
+            case "vGetTime": vm.ret((int)(calendarMillis()/1000L)); break;   // segundos desde 1970 (epoch UTC). Football Pro usa p/ seed/relogio; antes caia no default=0 -> logica de tempo quebrava
             case "vGetTimeDate": case "vGetTimeDateUTC": writeDateTime(vm.arg(0)); vm.ret(0); break;
             // vGetRandom: 16 bits (VRAND_MAX=0xffff no SDK) devolvidos com SINAL ESTENDIDO p/ 32 bits,
             // EXATAMENTE como o emulador oficial (log mostra retornos tanto positivos <32768 quanto
@@ -546,6 +557,7 @@ public final class Sdk {
     // CRITICO: escrever EXATAMENTE 8 bytes (o jogo passa buffer na PILHA junto ao RA; zerar demais corrompe o RA)
     void writeDateTime(int ptr){
         java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(calendarMillis());
         vm.write16(ptr+0, c.get(java.util.Calendar.YEAR));
         vm.write16(ptr+2, c.get(java.util.Calendar.DAY_OF_MONTH));
         vm.write8 (ptr+4, c.get(java.util.Calendar.MONTH)+1);

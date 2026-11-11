@@ -143,8 +143,14 @@ package-exe.bat      REM uses jpackage (JDK 14+)
 On Linux, `make-deb-linux.bat` builds a `.deb` (it needs only a JDK — no dpkg-deb, no WSL).
 
 ### Android
-Open the **`android/`** folder in Android Studio and press **Run**. `minSdk 24` (Android 7.0).
-Add your `.mpn` files to the app's ROMs folder or `/sdcard/mophun`, or import them with the **“+”** button.
+Open the **`android/`** folder in a recent Android Studio and press **Run**. The app
+compiles against and targets **Android 16 / API 36**, while retaining **Android 7.0 / API 24**
+as its minimum. Outside Nix, use JDK 17+ (JDK 21 recommended).
+
+On modern Android, import your `.mpn` files with the **“+”** button. SoundFonts can be
+imported through **Settings → Soundfont → Import .sf2…**. Both use the system document
+picker without broad storage permissions. Direct `/sdcard/mophun` scanning is retained
+only on Android 7–9; it is not available under modern scoped-storage rules.
 
 **NixOS — separate build and emulator shells** (commands from the repository root):
 
@@ -154,22 +160,27 @@ nix-shell android-build.nix
 wolphun-android-build
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 
-# Terminal 2: boot Android 10, install the APK and open the library.
+# Terminal 2: boot Android 16, install the APK and open the library.
 nix-shell android-emulator.nix
 wolphun-android-emulator
 # After rebuilding, update the running emulator without deleting app data:
 wolphun-android-install
 # Copy your own games onto the emulated phone:
-adb shell mkdir -p /sdcard/mophun
-adb push /path/to/game.mpn /sdcard/mophun/
+adb push /path/to/game.mpn /sdcard/Download/
+# Then tap + in the app and select the file from Downloads.
 ```
 
 Both shells use Nixpkgs `androidenv` and explicitly accept Google's SDK licenses.
 If your installation has no Nixpkgs channel in `NIX_PATH`, add
 `-I nixpkgs=flake:nixpkgs` to `nix-shell`.
-The build shell uses JDK 11 for Gradle 5.6.4, SDK/build tools 29/29.0.3,
-CMake 3.10.2, and NDK 21.4 through the `wolphunNdkVersion` Gradle property.
-It regenerates the gitignored `android/local.properties` with Nix SDK/CMake paths;
+The build shell uses **JDK 21**, **Gradle 8.14.6**, **Android Gradle Plugin 8.13.2**,
+**SDK 36 / build tools 36.0.0**, **CMake 3.22.1**, and **NDK 28.2.13676358**.
+These SDK/tool versions are available through [Nixpkgs unstable](https://search.nixos.org/packages?channel=unstable&query=androidenv).
+[AGP 8.13 supports API 36 and requires Gradle 8.13+ / JDK 17+](https://developer.android.com/build/releases/past-releases/agp-8-13-0-release-notes).
+The `wolphunNdkVersion` Gradle property remains available as an override; its default
+now matches the shell. NDK r28 and the modern AGP support 16 KB native-library/page
+alignment. The wrapper verifies its Gradle distribution with a pinned SHA-256 checksum.
+The build shell regenerates the gitignored `android/local.properties` with Nix SDK/CMake paths;
 the first build needs network access for Gradle and Maven dependencies.
 
 The emulator shell targets **x86_64 Linux with KVM**; your user needs read/write
@@ -179,6 +190,13 @@ access to `/dev/kvm` (normally through the NixOS `kvm` group). It uses
 Nix store. Set `NIX_ANDROID_EMULATOR_FLAGS` to pass emulator options, for example
 `-no-window -gpu software` for a headless session. With multiple ADB devices,
 set `ANDROID_SERIAL` before running the install or ROM-import commands.
+
+The API 36 target replaces the old API 29 target responsible for obsolete-target
+privacy warnings on modern Android. This does **not** bypass ordinary sideloading,
+unknown-source, or Play Protect checks. When upgrading an existing installation,
+keep the same signing key to preserve its saves and imported ROMs. SoundFonts that
+previously lived in shared storage must be reimported through the picker on modern
+Android.
 
 ### Symbian S60 3rd Edition
 No build needed to use it — copy the right package from [`symbian/bin/`](symbian/bin) to the

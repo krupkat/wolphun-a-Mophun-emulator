@@ -1,16 +1,21 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "29.0.3"
-    // The Nix build shell selects a stable NDK compatible with AGP 3.6.4.
-    ndkVersion project.findProperty('wolphunNdkVersion') ?: '30.0.16138531 rc3'
+    namespace 'com.manedsoftware.wolphun'
+    compileSdk 36
+    buildToolsVersion "36.0.0"
+    // NDK r28 builds 16 KB page-size compatible native libraries by default.
+    ndkVersion project.findProperty('wolphunNdkVersion') ?: '28.2.13676358'
+
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId "com.manedsoftware.wolphun"
-        minSdkVersion 24          // Android 7.0 (o alvo mínimo)
-        targetSdkVersion 29
-        versionCode 3
+        minSdk 24                // Android 7.0 remains supported.
+        targetSdk 36              // Android 16 privacy/security behavior.
+        versionCode 4
         versionName "0.3.0-beta"
 
         // NDK: synth de SoundFont (.sf2) em C -> TinySoundFont + TinyMidiLoader
@@ -27,7 +32,7 @@ android {
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
-            version "3.10.2"
+            version "3.22.1"
         }
     }
 
@@ -42,20 +47,14 @@ android {
         }
     }
 
-    lintOptions {
+    lint {
         abortOnError false
-    }
-
-    // O AGP 3.6.4 (antigo) tenta "strip" as .so com ferramentas GCC que o NDK r30 removeu
-    // (so tem llvm-strip) -> "CreateProcess error=2". doNotStrip pula esse passo (a .so fica
-    // um pouco maior, com simbolos de debug, mas funciona 100%).
-    packagingOptions {
-        doNotStrip "**/*.so"
     }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'androidx.recyclerview:recyclerview:1.1.0'
-    implementation 'com.google.android.material:material:1.1.0'
+    implementation 'androidx.activity:activity:1.11.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'com.google.android.material:material:1.13.0'
 }

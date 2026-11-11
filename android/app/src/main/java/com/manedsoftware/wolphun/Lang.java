@@ -48,7 +48,7 @@ public final class Lang {
         p("lbl.res","Resolution (WxH):","Resolución (AxA):","Auflösung (BxH):","Resolução (LxA):","Роздільність (ШxВ):","Разрешение (ШxВ):");
         p("lbl.device","Device model:","Modelo del dispositivo:","Gerätemodell:","Modelo do aparelho:","Модель пристрою:","Модель устройства:");
         p("lbl.addrom","Add ROM","Añadir ROM","ROM hinzufügen","Adicionar ROM","Додати ROM","Добавить ROM");
-        p("lib.empty","No ROMs found.\n\nCopy your .mpn files to:\n","No se encontraron ROMs.\n\nCopia tus archivos .mpn a:\n","Keine ROMs gefunden.\n\nKopieren Sie Ihre .mpn-Dateien nach:\n","Nenhuma ROM encontrada.\n\nCopie seus arquivos .mpn para:\n","ROM не знайдено.\n\nСкопіюйте файли .mpn до:\n","ROM не найдены.\n\nСкопируйте файлы .mpn в:\n");
+        p("lib.empty","No ROMs found.\n\nTap + to import your .mpn files.","No se encontraron ROMs.\n\nPulsa + para importar archivos .mpn.","Keine ROMs gefunden.\n\nMit + können Sie .mpn-Dateien importieren.","Nenhuma ROM encontrada.\n\nToque em + para importar arquivos .mpn.","ROM не знайдено.\n\nНатисніть +, щоб імпортувати файли .mpn.","ROM не найдены.\n\nНажмите +, чтобы импортировать файлы .mpn.");
         p("lbl.fps","FPS limit:","Límite de FPS:","FPS-Limit:","Limite de FPS:","Ліміт FPS:","Лимит FPS:");
         p("lbl.gamma","Brightness (gamma):","Brillo (gamma):","Helligkeit (Gamma):","Brilho (gamma):","Яскравість (гама):","Яркость (гамма):");
         p("lbl.sound","Sound","Sonido","Ton","Som","Звук","Звук");
@@ -71,6 +71,7 @@ public final class Lang {
         p("sf.default","Default (built-in)","Predeterminado","Standard","Padrão (embutido)","Типовий","По умолчанию");
         p("sf.current","Soundfont:","Banco de sonidos:","Soundfont:","Banco de sons:","Банк звуків:","Банк звуков:");
         p("sf.applied","Soundfont set. Applies to the next game you open.","Se aplica al próximo juego.","Gilt fürs nächste Spiel.","Vale para o próximo jogo aberto.","Діє для наступної гри.","Применится к следующей игре.");
+        p("sf.import","Import .sf2…","Importar .sf2…",".sf2 importieren…","Importar .sf2…","Імпортувати .sf2…","Импортировать .sf2…");
         p("sf.folderhint","Put .sf2 files in /sdcard/mophun/soundbanks","Coloca .sf2 en /sdcard/mophun/soundbanks",".sf2 nach /sdcard/mophun/soundbanks","Coloque .sf2 em /sdcard/mophun/soundbanks","Покладіть .sf2 у /sdcard/mophun/soundbanks","Положите .sf2 в /sdcard/mophun/soundbanks");
         // ---- aparencia / tema ----
         p("m.appearance","Appearance","Apariencia","Erscheinungsbild","Aparência","Вигляд","Оформление");

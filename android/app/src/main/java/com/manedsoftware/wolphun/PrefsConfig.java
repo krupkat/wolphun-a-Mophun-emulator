@@ -138,8 +138,8 @@ public final class PrefsConfig {
         if(!d.exists()) d.mkdirs();
         return d;
     }
-    // pasta COMPARTILHADA e PERSISTENTE (sobrevive a reinstalações): /sdcard/mophun
-    // Requer READ_EXTERNAL_STORAGE. É onde o usuário coloca ROMs pelo gerenciador de arquivos.
+    // Legacy shared directory: only scanned on Android 7-9. Modern Android
+    // imports documents into app-specific storage through the system picker.
     public static File sharedRomsDir(){
         return new File(Environment.getExternalStorageDirectory(), "mophun");
     }
@@ -150,9 +150,9 @@ public final class PrefsConfig {
         String safe = gameName.replaceAll("[^A-Za-z0-9_.-]", "_");
         return new File(d, safe+".png");
     }
-    // pasta de SoundFonts (.sf2): /sdcard/mophun/soundbanks — o usuario coloca os .sf2 aqui (estilo JL-Mod).
-    public static File soundbanksDir(){
-        File d = new File(sharedRomsDir(), "soundbanks");
+    // Imported SoundFonts live in private storage; no broad file permissions.
+    public static File soundbanksDir(Context ctx){
+        File d = new File(ctx.getFilesDir(), "soundbanks");
         if(!d.exists()) d.mkdirs();
         return d;
     }

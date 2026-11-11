@@ -1,7 +1,6 @@
 package com.manedsoftware.wolphun;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -14,6 +13,8 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.app.ActivityCompat;
 import java.io.File;
 import wolphun.vm.MidiBridge;
@@ -22,7 +23,7 @@ import wolphun.vm.MidiBridge;
  * Tela que roda uma partida: monta a GameSession + EmulatorView e liga tudo.
  * O botão ≡ do teclado virtual abre o menu (Salvar/Carregar estado, Reiniciar, Fechar).
  */
-public final class EmulatorActivity extends Activity implements EmulatorView.MenuListener {
+public final class EmulatorActivity extends ComponentActivity implements EmulatorView.MenuListener {
     public static final String EXTRA_PATH = "rom_path";
     public static final String EXTRA_NAME = "rom_name";
 
@@ -83,6 +84,11 @@ public final class EmulatorActivity extends Activity implements EmulatorView.Men
         container.addView(menuBtn, lp);
         menuBtn.bringToFront();
         setContentView(container);
+        SystemBars.apply(this);
+        // Android 16 no longer calls Activity.onBackPressed for targetSdk 36.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true){
+            @Override public void handleOnBackPressed(){ handleBack(); }
+        });
 
         // backend de MIDI: com .sf2 configurado -> synth de SoundFont (NDK); senao -> Sonivox/MediaPlayer.
         sfSynth = SoundFontSynth.tryCreate(cfg.soundFont);
@@ -231,7 +237,7 @@ public final class EmulatorActivity extends Activity implements EmulatorView.Men
         view.setEditMode(true);
         toast(Lang.t("gw.edithint"));
     }
-    @Override public void onBackPressed(){
+    private void handleBack(){
         if(view!=null && view.isEditMode()){
             new AlertDialog.Builder(this)
                 .setTitle(Lang.t("gw.editkeys"))
@@ -244,7 +250,7 @@ public final class EmulatorActivity extends Activity implements EmulatorView.Men
                 .show();
             return;
         }
-        super.onBackPressed();
+        finish();
     }
 
     // ---- captura de tela (sempre na RESOLUCAO DO APARELHO, nunca na do jogo) ----

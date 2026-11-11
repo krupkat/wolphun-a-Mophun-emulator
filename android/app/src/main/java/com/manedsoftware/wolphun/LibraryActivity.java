@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import androidx.core.app.ActivityCompat;
@@ -45,9 +46,10 @@ public final class LibraryActivity extends AppCompatActivity {
         cfg = PrefsConfig.load(this);
         Lang.setByCode(cfg.language);
         setContentView(R.layout.activity_library);
+        SystemBars.apply(this);
         list  = findViewById(R.id.list);
         empty = findViewById(R.id.empty);
-        empty.setText(Lang.t("lib.empty") + getExternalFilesDir(null) + "/roms/");   // i18n + caminho real
+        empty.setText(Lang.t("lib.empty"));
 
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(new Adapter());
@@ -70,10 +72,11 @@ public final class LibraryActivity extends AppCompatActivity {
         Theme.apply(this, cfg);
     }
 
-    // ---- permissão de armazenamento (a caixa "Permitir") p/ ler /sdcard/mophun ----
+    // Shared-folder access is legacy-only. Modern Android uses the SAF picker.
     private static final int REQ_PERM = 2002;
     private void requestStoragePermission(){
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+        if(Build.VERSION.SDK_INT <= 28
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this,
                 new String[]{ Manifest.permission.READ_EXTERNAL_STORAGE }, REQ_PERM);
@@ -158,8 +161,10 @@ public final class LibraryActivity extends AppCompatActivity {
     private void reload(){
         games.clear();
         scan(PrefsConfig.romsDir(this), games);                 // pasta do app
-        File shared = PrefsConfig.sharedRomsDir();               // pasta persistente /sdcard/mophun
-        if(shared.isDirectory()) scan(shared, games);
+        if(Build.VERSION.SDK_INT <= 28){
+            File shared = PrefsConfig.sharedRomsDir();           // legacy /sdcard/mophun
+            if(shared.isDirectory()) scan(shared, games);
+        }
         // remove duplicados (mesmo nome), mantendo o primeiro
         java.util.HashSet<String> seen = new java.util.HashSet<String>();
         for(java.util.Iterator<GameEntry> it=games.iterator(); it.hasNext();)

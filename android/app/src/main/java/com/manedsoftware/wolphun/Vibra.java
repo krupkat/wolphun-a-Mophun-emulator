@@ -17,9 +17,8 @@ import wolphun.vm.Sdk;
  * Dois caminhos de API porque o minSdk e 24:
  *   - API 26+: VibrationEffect.createOneShot;
  *   - API 24/25: o vibrate(long) antigo, deprecated mas e o unico que existe la.
- * Usamos VIBRATOR_SERVICE e nao o VibratorManager da API 31: o projeto compila contra a
- * compileSdk 29, onde a classe nova nem existe -- e o servico antigo continua DEPRECIADO,
- * nao removido, entao funciona tambem nos aparelhos novos.
+ * Usamos VIBRATOR_SERVICE para manter um caminho comum desde a API 24. O servico
+ * antigo continua disponivel nos aparelhos novos, embora esteja deprecated.
  *
  * Precisa de android.permission.VIBRATE no manifesto -- e permissao "normal", concedida na
  * instalacao, sem dialogo em runtime.

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.manedsoftware.wolphun">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ler ROMs de uma pasta compartilhada (/sdcard/mophun) que sobrevive a reinstalações -->
+    <!-- Modern Android imports ROMs/SoundFonts through the document picker.
+         Broad storage access is only used on Android 7-9. -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!-- gravar as capturas de tela em /sdcard/Pictures/wolphun. Do Android 10 (29) em diante
          isso passa pelo MediaStore e NAO precisa de permissao nenhuma -> maxSdkVersion. -->
@@ -15,7 +16,6 @@
         android:allowBackup="true"
         android:icon="@drawable/wolphun_logo"
         android:label="@string/app_name"
-        android:requestLegacyExternalStorage="true"
         android:roundIcon="@drawable/wolphun_logo"
         android:theme="@style/AppTheme">
 

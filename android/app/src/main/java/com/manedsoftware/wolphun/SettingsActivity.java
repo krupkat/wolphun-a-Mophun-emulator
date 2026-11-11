@@ -1,6 +1,11 @@
 package com.manedsoftware.wolphun;
 
+import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.OpenableColumns;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -23,6 +28,7 @@ import java.util.HashMap;
  * limite de FPS. Persistidas em SharedPreferences (PrefsConfig) ao sair.
  */
 public final class SettingsActivity extends AppCompatActivity {
+    private static final int REQ_SOUNDFONT = 1002;
     private PrefsConfig cfg;
     private Switch soundSw, reverbSw, vibrateSw;
     private Button soundfontBtn;
@@ -42,6 +48,7 @@ public final class SettingsActivity extends AppCompatActivity {
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);
         setContentView(R.layout.activity_settings);
+        SystemBars.apply(this);
         if(getSupportActionBar()!=null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         cfg = PrefsConfig.load(this);
         Lang.setByCode(cfg.language);
@@ -157,21 +164,26 @@ public final class SettingsActivity extends AppCompatActivity {
 
     private void updateSizeLbl(){ sizeLbl.setText(Lang.t("ap.size")+"  "+String.format("%.2f", cfg.uiFontScale)+"x"); }
 
-    // ---- Soundfont (.sf2): escolhe da pasta /sdcard/mophun/soundbanks ----
+    // SoundFonts are imported via SAF and copied to private app storage.
     private void updateSoundfontBtn(){
         String cur = (cfg.soundFont!=null) ? new java.io.File(cfg.soundFont).getName() : Lang.t("sf.default");
         soundfontBtn.setText(Lang.t("sf.current")+" "+cur);
     }
     private void chooseSoundfont(){
-        java.io.File dir = PrefsConfig.soundbanksDir();
-        java.io.File[] sf2 = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".sf2"));
+        java.io.File dir = PrefsConfig.soundbanksDir(this);
+        java.util.List<java.io.File> banks = new java.util.ArrayList<java.io.File>();
+        java.io.File[] imported = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".sf2"));
+        if(imported!=null) java.util.Collections.addAll(banks, imported);
+        if(Build.VERSION.SDK_INT <= 28){
+            java.io.File legacy = new java.io.File(PrefsConfig.sharedRomsDir(), "soundbanks");
+            java.io.File[] shared = legacy.listFiles((d, name) -> name.toLowerCase().endsWith(".sf2"));
+            if(shared!=null) java.util.Collections.addAll(banks, shared);
+        }
+        java.util.Collections.sort(banks);
         final java.util.List<String> paths = new java.util.ArrayList<String>();  // null-first p/ "Default"
         final java.util.List<String> names = new java.util.ArrayList<String>();
         paths.add(null); names.add(Lang.t("sf.default"));
-        if(sf2!=null){
-            java.util.Arrays.sort(sf2);
-            for(java.io.File f : sf2){ paths.add(f.getAbsolutePath()); names.add(f.getName()); }
-        }
+        for(java.io.File f : banks){ paths.add(f.getAbsolutePath()); names.add(f.getName()); }
         int cur = 0;
         for(int i=1;i<paths.size();i++) if(paths.get(i).equals(cfg.soundFont)) cur=i;
         AlertDialog dlg = new AlertDialog.Builder(this)
@@ -183,21 +195,62 @@ public final class SettingsActivity extends AppCompatActivity {
                 d.dismiss();
                 Toast.makeText(this, Lang.t("sf.applied"), Toast.LENGTH_SHORT).show();
             })
-            .setNeutralButton(Lang.t("sf.folderhint"), null)
+            .setNeutralButton(Lang.t("sf.import"), (d, w) -> openSoundfontPicker())
             .setNegativeButton(Lang.t("btn.cancel"), null)
             .create();
         dlg.show();
-        // O aviso "coloque os .sf2 em /sdcard/mophun/soundbanks" nao cabe num botao de dialogo e
-        // saia cortado em "...MOPHUN/S...". Botao de dialogo nao quebra linha, entao o texto passa a
-        // CORRER na horizontal (marquee em loop) e o caminho inteiro fica legivel.
-        android.widget.Button hint = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);
-        if(hint!=null){
-            hint.setSingleLine(true);
-            hint.setHorizontallyScrolling(true);
-            hint.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
-            hint.setMarqueeRepeatLimit(-1);       // -1 = repete p/ sempre
-            hint.setSelected(true);               // sem isto o marquee nao anda
+    }
+
+    private void openSoundfontPicker(){
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        try { startActivityForResult(intent, REQ_SOUNDFONT); }
+        catch(android.content.ActivityNotFoundException e){
+            Toast.makeText(this, Lang.t("imp.nofileapp"), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override protected void onActivityResult(int req, int result, Intent data){
+        super.onActivityResult(req, result, data);
+        if(req!=REQ_SOUNDFONT || result!=RESULT_OK || data==null || data.getData()==null) return;
+        final Uri uri = data.getData();
+        new Thread(() -> {
+            java.io.File out = null;
+            try {
+                String name = "soundfont.sf2";
+                try(Cursor cursor = getContentResolver().query(uri,
+                        new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)){
+                    if(cursor!=null && cursor.moveToFirst()){
+                        String display = cursor.getString(0);
+                        if(display!=null) name = display;
+                    }
+                }
+                if(!name.toLowerCase(java.util.Locale.ROOT).endsWith(".sf2"))
+                    throw new java.io.IOException("Select a .sf2 SoundFont");
+                // Document-provider filenames are not trusted filesystem paths.
+                name = name.replaceAll("[^A-Za-z0-9_.-]", "_");
+                out = java.io.File.createTempFile("sf-", "_"+name, PrefsConfig.soundbanksDir(this));
+                try(java.io.InputStream in = getContentResolver().openInputStream(uri);
+                    java.io.OutputStream stream = new java.io.FileOutputStream(out)){
+                    if(in==null) throw new java.io.IOException("Cannot open SoundFont");
+                    byte[] buffer = new byte[8192];
+                    int n;
+                    while((n=in.read(buffer))!=-1) stream.write(buffer, 0, n);
+                }
+                final String path = out.getAbsolutePath();
+                runOnUiThread(() -> {
+                    cfg.soundFont = path;
+                    cfg.save(this);
+                    updateSoundfontBtn();
+                    Toast.makeText(this, Lang.t("sf.applied"), Toast.LENGTH_SHORT).show();
+                });
+            } catch(Exception e){
+                if(out!=null) out.delete();
+                runOnUiThread(() -> Toast.makeText(this, Lang.t("imp.fail")+e.getMessage(),
+                    Toast.LENGTH_LONG).show());
+            }
+        }, "import-soundfont").start();
     }
 
     private void onThemePicked(int pos){

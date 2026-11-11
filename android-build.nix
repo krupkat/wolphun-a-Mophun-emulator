@@ -14,17 +14,17 @@
     },
 }:
 let
-  # Gradle 5.6.4 / AGP 3.6.4 cannot run on current JDKs such as Java 21.
-  jdk = pkgs.jdk11_headless;
-  buildToolsVersion = "29.0.3";
-  ndkVersion = "21.4.7075529";
-  cmakeVersion = "3.10.2";
+  # Gradle 8.14 / AGP 8.13 support Java 21 (AGP requires at least Java 17).
+  jdk = pkgs.jdk21_headless;
+  buildToolsVersion = "36.0.0";
+  ndkVersion = "28.2.13676358";
+  cmakeVersion = "3.22.1";
   projectDir = toString ./android;
 
   androidComposition = pkgs.androidenv.composeAndroidPackages {
-    platformVersions = [ "29" ];
+    platformVersions = [ "36" ];
     buildToolsVersions = [ buildToolsVersion ];
-    cmdLineToolsVersion = "8.0";
+    cmdLineToolsVersion = "19.0";
     toolsVersion = null;
     includeNDK = true;
     ndkVersions = [ ndkVersion ];
@@ -48,7 +48,7 @@ pkgs.mkShellNoCC {
 
   JAVA_HOME = jdk.home;
   ANDROID_HOME = sdkRoot;
-  ANDROID_SDK_ROOT = sdkRoot; # Legacy AGP compatibility.
+  ANDROID_SDK_ROOT = sdkRoot; # Compatibility with other Android tooling.
   ANDROID_NDK_ROOT = "${sdkRoot}/ndk/${ndkVersion}";
   # android/app/build.gradle accepts this override for the Nix-provided NDK.
   ORG_GRADLE_PROJECT_wolphunNdkVersion = ndkVersion;
@@ -57,12 +57,12 @@ pkgs.mkShellNoCC {
     # Maven's unpatched aapt2 executable cannot run directly on NixOS.
     export GRADLE_OPTS="''${GRADLE_OPTS:+$GRADLE_OPTS }-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/${buildToolsVersion}/aapt2"
 
-    # Android's CMake directory includes a build suffix (e.g. 3.10.2.4988404).
+    # Some Android CMake packages append a build number to their directory.
     cmake_root=( "$ANDROID_HOME"/cmake/${cmakeVersion}* )
     export PATH="''${cmake_root[0]}/bin:$PATH"
 
     # Regenerate the gitignored machine-local SDK paths, including any stale
-    # paths left by Android Studio. This file is not part of the source tree.
+    # paths left by Android Studio. This machine-local file is gitignored.
     printf 'sdk.dir=%s\ncmake.dir=%s\n' "$ANDROID_HOME" "''${cmake_root[0]}" \
       > ${pkgs.lib.escapeShellArg "${projectDir}/local.properties"}
     unset cmake_root

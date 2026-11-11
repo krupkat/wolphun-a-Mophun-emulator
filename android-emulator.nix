@@ -22,12 +22,19 @@ let
   package = "com.manedsoftware.wolphun";
   activity = "${package}.LibraryActivity";
 
-  emulator = pkgs.androidenv.emulateApp {
+  # emulateApp currently hardcodes command-line tools 8.0. Override its SDK
+  # composer so avdmanager also uses modern tooling for the API 36 image.
+  emulateApp = pkgs.androidenv.emulateApp.override {
+    composeAndroidPackages = args: pkgs.androidenv.composeAndroidPackages (args // {
+      cmdLineToolsVersion = "19.0";
+    });
+  };
+  emulator = emulateApp {
     name = "wolphun-android-emulator";
-    platformVersion = "29";
+    platformVersion = "36";
     abiVersion = "x86_64"; # Also built by the app's native-library abiFilters.
     systemImageType = "default"; # No Google Play services needed.
-    deviceName = "wolphun-api29";
+    deviceName = "wolphun-api36";
     app = apk;
     inherit package activity;
 
@@ -42,7 +49,7 @@ let
     };
     sdkExtraArgs = {
       toolsVersion = null;
-      buildToolsVersions = [ "29.0.3" ];
+      buildToolsVersions = [ "36.0.0" ];
       includeCmake = false;
       includeNDK = false;
     };
@@ -84,7 +91,7 @@ pkgs.mkShellNoCC {
     fi
     echo 'Run: wolphun-android-emulator'
     echo 'After rebuilding: wolphun-android-install'
-    echo 'ROM import: adb shell mkdir -p /sdcard/mophun; adb push game.mpn /sdcard/mophun/'
+    echo 'ROM import: adb push game.mpn /sdcard/Download/; then tap + in the app and select it.'
     echo 'Emulator flags: export NIX_ANDROID_EMULATOR_FLAGS="-gpu software" (or other emulator options).'
   '';
 }

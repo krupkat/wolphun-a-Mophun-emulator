@@ -1,11 +1,11 @@
-// Build de topo. AGP 3.6.4 = compatível com Android Studio 3.6.
+// AGP 8.13 supports Android 16 / API 36 and requires Gradle 8.13+ / JDK 17+.
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.4'
+        classpath 'com.android.tools.build:gradle:8.13.2'
     }
 }
 
@@ -16,6 +16,6 @@ allprojects {
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete layout.buildDirectory
 }

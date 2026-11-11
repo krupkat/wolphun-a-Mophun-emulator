@@ -174,6 +174,8 @@ wolphun-android-build
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 # Display-geometry regression tests (JDK only; no Maven dependencies):
 bash android/tests/run-viewport-tests.sh
+# ROM decryption tests (optionally pass paths to local .mpn files):
+bash android/tests/run-crypt-tests.sh
 
 # Terminal 2: boot Android 16, install the APK and open the library.
 nix-shell android-emulator.nix

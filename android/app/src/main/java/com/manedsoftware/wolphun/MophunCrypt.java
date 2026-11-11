@@ -36,17 +36,40 @@ public final class MophunCrypt {
 
     // ---------------- API ----------------
 
-    /** true se a ROM parece CIFRADA (entropia da seção de código > 190 bytes distintos/4KB). */
+    /** High byte variety suggests encryption, but valid PIP2 entry code takes precedence. */
     public static boolean looksEncrypted(byte[] d){
         try {
             if(d.length<44 || d[0]!='V'||d[1]!='M'||d[2]!='G'||d[3]!='P') return false;
             int codeSize = u32(d,12);
-            int start=40, len=Math.min(Math.min(codeSize, d.length-40), 4096);
+            if(codeSize<0 || codeSize>d.length-40) return false;
+            int start=40, len=Math.min(codeSize, 4096);
             if(len<=64) return false;
             boolean[] seen=new boolean[256]; int distinct=0;
             for(int i=0;i<len;i++){ int b=d[start+i]&0xff; if(!seen[b]){ seen[b]=true; distinct++; } }
-            return distinct>190;
+            // Little Indians has 198 distinct bytes even AFTER successful decryption.
+            // Import and launch both check this, so entropy alone decrypted it twice.
+            return distinct>190 && !hasPip2Entry(d, codeSize);
         } catch(Exception e){ return false; }
+    }
+
+    private static boolean hasPip2Entry(byte[] d, int codeSize){
+        int pc=40, end=40+codeSize, instructions=0;
+        long poolCount = u32(d,32) & M;
+        while(pc<end && instructions<32){
+            if(pc>end-4) return false;
+            int op=d[pc]&0xff;
+            if(op>0x66) return false;             // PIP2 opcodes implemented by the VM
+            int size = op>=0x4a ? 8 : 4;         // these opcodes also consume an immediate word
+            if(pc>end-size) return false;
+            if(size==8){
+                int immediate=u32(d,pc+4);
+                // High-bit-set words encode raw immediates; otherwise this is a pool reference.
+                if(immediate>=0 && (long)immediate>poolCount) return false;
+            }
+            pc+=size;
+            instructions++;
+        }
+        return instructions>=16;
     }
 
     /** Descriptografa os bytes de um .mpn VMGP. Devolve novo array, ou null se sem chave/META. */

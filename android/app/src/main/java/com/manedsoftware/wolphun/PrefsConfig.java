@@ -157,6 +157,24 @@ public final class PrefsConfig {
         return d;
     }
 
+    // Library favorites use the full name: safeKey would merge names such as "A B" and "A_B".
+    public static boolean isFavorite(Context ctx, String gameName){
+        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("favorite_"+gameName.toLowerCase(java.util.Locale.ROOT), false);
+    }
+    public static void setFavorite(Context ctx, String gameName, boolean favorite){
+        String key = "favorite_"+gameName.toLowerCase(java.util.Locale.ROOT);
+        SharedPreferences.Editor e = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+        if(favorite) e.putBoolean(key, true); else e.remove(key);
+        e.apply();
+    }
+    public static boolean getFavoritesOnly(Context ctx){
+        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("favoritesOnly", false);
+    }
+    public static void setFavoritesOnly(Context ctx, boolean on){
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("favoritesOnly", on).apply();
+    }
+
     // ---- layout do teclado virtual POR JOGO (mover/redimensionar botões) ----
     private static String safeKey(String gameName){ return gameName.replaceAll("[^A-Za-z0-9_.-]", "_"); }
     // resolucao POR JOGO (indice de modelo). -1 = automatico (detecta pelo nome do arquivo).

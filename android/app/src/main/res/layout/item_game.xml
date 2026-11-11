@@ -41,4 +41,13 @@
             android:textSize="12sp"
             android:textColor="#8A000000" />
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/favorite"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="16dp"
+        android:src="@drawable/ic_favorite"
+        android:contentDescription="@string/favorite"
+        android:visibility="invisible" />
 </LinearLayout>

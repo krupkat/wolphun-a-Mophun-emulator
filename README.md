@@ -110,6 +110,9 @@ runs inside each tick rather than just capping frames.
   the handset keys it actually reads, so the keypad is not cluttered with dead buttons.
 - **Screenshots** and **texture filter**, matching the desktop.
 - **Bulk ROM import** and a clearer empty-library screen.
+- **Favorites** — long-press a game to add/remove it from favorites. A heart marks
+  favorite games; tap the heart in the top bar to switch between all games and
+  favorites only. Favorites and the selected filter persist between launches.
 
 ### Both GUIs
 

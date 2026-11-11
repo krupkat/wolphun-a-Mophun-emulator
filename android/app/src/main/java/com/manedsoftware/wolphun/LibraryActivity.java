@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.provider.OpenableColumns;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.MenuItemCompat;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -40,10 +41,12 @@ public final class LibraryActivity extends AppCompatActivity {
     private RecyclerView list;
     private TextView empty;
     private PrefsConfig cfg;
+    private boolean favoritesOnly;
 
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);
         cfg = PrefsConfig.load(this);
+        favoritesOnly = PrefsConfig.getFavoritesOnly(this);
         Lang.setByCode(cfg.language);
         setContentView(R.layout.activity_library);
         SystemBars.apply(this);
@@ -68,7 +71,9 @@ public final class LibraryActivity extends AppCompatActivity {
         super.onResume();
         cfg = PrefsConfig.load(this);        // recarrega (idioma/tema podem ter mudado nas Settings)
         Lang.setByCode(cfg.language);
+        favoritesOnly = PrefsConfig.getFavoritesOnly(this);
         reload();
+        invalidateOptionsMenu();
         Theme.apply(this, cfg);
     }
 
@@ -167,11 +172,15 @@ public final class LibraryActivity extends AppCompatActivity {
         }
         // remove duplicados (mesmo nome), mantendo o primeiro
         java.util.HashSet<String> seen = new java.util.HashSet<String>();
-        for(java.util.Iterator<GameEntry> it=games.iterator(); it.hasNext();)
-            if(!seen.add(it.next().name.toLowerCase())) it.remove();
+        for(java.util.Iterator<GameEntry> it=games.iterator(); it.hasNext();){
+            GameEntry g = it.next();
+            if(!seen.add(g.name.toLowerCase(java.util.Locale.ROOT))
+                    || (favoritesOnly && !PrefsConfig.isFavorite(this, g.name))) it.remove();
+        }
         Collections.sort(games, new Comparator<GameEntry>(){
             public int compare(GameEntry a, GameEntry b){ return a.name.compareToIgnoreCase(b.name); }
         });
+        empty.setText(Lang.t(favoritesOnly ? "lib.favoritesempty" : "lib.empty"));
         empty.setVisibility(games.isEmpty() ? View.VISIBLE : View.GONE);
         list.setVisibility(games.isEmpty() ? View.GONE : View.VISIBLE);
         if(list.getAdapter()!=null) list.getAdapter().notifyDataSetChanged();
@@ -188,16 +197,22 @@ public final class LibraryActivity extends AppCompatActivity {
     }
     static String stripExt(String n){ int i=n.lastIndexOf('.'); return i>0? n.substring(0,i) : n; }
 
-    // toque longo -> menu do jogo (resolucao / apagar dados / desinstalar)
+    // Long press: favorite/unfavorite, resolution, game data, uninstall.
     private void showGameMenu(final GameEntry g){
-        final String[] items = { Lang.t("gm.resolution"), Lang.t("gm.cleardata"), Lang.t("uninst.ok") };
+        final boolean favorite = PrefsConfig.isFavorite(this, g.name);
+        final String[] items = { Lang.t(favorite ? "gm.unfavorite" : "gm.favorite"),
+            Lang.t("gm.resolution"), Lang.t("gm.cleardata"), Lang.t("uninst.ok") };
         new android.app.AlertDialog.Builder(this)
             .setTitle(g.name)
             .setItems(items, (d, which) -> {
                 switch(which){
-                    case 0: chooseResolution(g); break;
-                    case 1: confirmClearData(g); break;
-                    case 2: confirmUninstall(g); break;
+                    case 0:
+                        PrefsConfig.setFavorite(this, g.name, !favorite);
+                        reload();
+                        break;
+                    case 1: chooseResolution(g); break;
+                    case 2: confirmClearData(g); break;
+                    case 3: confirmUninstall(g); break;
                 }
             })
             .setNegativeButton(Lang.t("btn.cancel"), null)
@@ -248,6 +263,7 @@ public final class LibraryActivity extends AppCompatActivity {
         boolean ok = false;
         try { ok = g.file.delete(); } catch(Throwable t){ ok = false; }
         if(ok){
+            PrefsConfig.setFavorite(this, g.name, false);
             // remove tambem a pasta de saves/estados + a miniatura (desinstalacao completa)
             try { deleteDir(PrefsConfig.savesDir(this, g.name)); } catch(Throwable t){}
             try { PrefsConfig.thumbFile(this, g.name).delete(); } catch(Throwable t){}
@@ -280,8 +296,26 @@ public final class LibraryActivity extends AppCompatActivity {
         m.findItem(R.id.action_about).setTitle(Lang.t("m.about"));
         return true;
     }
+    @Override public boolean onPrepareOptionsMenu(Menu menu){
+        MenuItem favorites = menu.findItem(R.id.action_favorites);
+        String title = Lang.t(favoritesOnly ? "lib.showall" : "lib.showfavorites");
+        favorites.setTitle(title);
+        favorites.setChecked(favoritesOnly);
+        favorites.setIcon(favoritesOnly ? R.drawable.ic_favorite : R.drawable.ic_favorite_border);
+        MenuItemCompat.setContentDescription(favorites, title);
+        MenuItemCompat.setTooltipText(favorites, title);
+        return super.onPrepareOptionsMenu(menu);
+    }
     @Override public boolean onOptionsItemSelected(MenuItem item){
         int id = item.getItemId();
+        if(id==R.id.action_favorites){
+            favoritesOnly = !favoritesOnly;
+            PrefsConfig.setFavoritesOnly(this, favoritesOnly);
+            reload();
+            invalidateOptionsMenu();
+            list.scrollToPosition(0);
+            return true;
+        }
         if(id==R.id.action_settings){ startActivity(new Intent(this, SettingsActivity.class)); return true; }
         if(id==R.id.action_language){ showLanguagePicker(); return true; }
         if(id==R.id.action_about){ showAbout(); return true; }
@@ -433,6 +467,9 @@ public final class LibraryActivity extends AppCompatActivity {
             android.graphics.Typeface tf = Theme.typeface(t.font);
             h.title.setTextColor(t.fg); h.title.setTypeface(tf, android.graphics.Typeface.BOLD);
             h.subtitle.setTextColor((t.fg & 0x00FFFFFF) | 0x99000000); h.subtitle.setTypeface(tf);
+            h.favorite.setImageTintList(android.content.res.ColorStateList.valueOf(t.accent));
+            h.favorite.setVisibility(PrefsConfig.isFavorite(LibraryActivity.this, g.name) ? View.VISIBLE : View.INVISIBLE);
+            h.favorite.setContentDescription(Lang.t("lib.favorite"));
             h.itemView.setOnClickListener(new View.OnClickListener(){
                 public void onClick(View v){ launch(g); }
             });
@@ -444,7 +481,13 @@ public final class LibraryActivity extends AppCompatActivity {
     }
     static final class VH extends RecyclerView.ViewHolder {
         final TextView title, subtitle;
-        final android.widget.ImageView icon;
-        VH(View v){ super(v); title=v.findViewById(R.id.title); subtitle=v.findViewById(R.id.subtitle); icon=v.findViewById(R.id.icon); }
+        final android.widget.ImageView icon, favorite;
+        VH(View v){
+            super(v);
+            title=v.findViewById(R.id.title);
+            subtitle=v.findViewById(R.id.subtitle);
+            icon=v.findViewById(R.id.icon);
+            favorite=v.findViewById(R.id.favorite);
+        }
     }
 }

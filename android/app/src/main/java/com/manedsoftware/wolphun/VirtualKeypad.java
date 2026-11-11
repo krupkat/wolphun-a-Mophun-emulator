@@ -59,10 +59,8 @@ public final class VirtualKeypad {
     private final List<Btn> btns = new ArrayList<Btn>();
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fillDown = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint fillMenu = new Paint(Paint.ANTI_ALIAS_FLAG);   // botao de opcoes (≡): fundo OPACO p/ flutuar visivel sobre o jogo
     private final Paint edit = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint strokeMenu = new Paint(Paint.ANTI_ALIAS_FLAG); // borda de destaque do botao de opcoes
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint icon = new Paint(Paint.ANTI_ALIAS_FLAG);   // ícones vetoriais (bonequinho)
 
@@ -75,10 +73,8 @@ public final class VirtualKeypad {
     public VirtualKeypad(){
         fill.setColor(0x55FFFFFF);
         fillDown.setColor(0xAAE8451F);
-        fillMenu.setColor(0xCC4A4A52);   // cinza-medio semi-opaco: visivel sobre PRETO (letterbox) E sobre cenas claras
         edit.setColor(0x66E8451F);
         stroke.setStyle(Paint.Style.STROKE); stroke.setStrokeWidth(2f); stroke.setColor(0x88FFFFFF);
-        strokeMenu.setStyle(Paint.Style.STROKE); strokeMenu.setStrokeWidth(3f); strokeMenu.setColor(0xFFE8451F);   // borda accent
         text.setColor(0xEEFFFFFF); text.setTextAlign(Paint.Align.CENTER);
 
         btns.add(new Btn(Screen.UP,    "▲", false));
@@ -107,11 +103,6 @@ public final class VirtualKeypad {
             Btn k = new Btn(KEYPAD_FLAG|code, Lang.t(code==PHONE_CLEAR ? "kp.clear" : "kp.exit"), true);
             k.visible=false; k.phone=true; btns.add(k);
         }
-    }
-
-    /** mostra/oculta o botão ≡ (MENU) desenhado no canvas. */
-    public void setMenuVisible(boolean on){
-        for(Btn b: btns) if(b.bit==MENU) b.visible = on;
     }
 
     /** liga/desliga o TECLADO NUMÉRICO COMPLETO no preset automático — por jogo. */
@@ -149,9 +140,7 @@ public final class VirtualKeypad {
             default:           nums = numbersVisible; break;          // LAY_AUTO
         }
         for(Btn b: btns){
-            // MENU=-1 tem de ser testado ANTES do KEYPAD_FLAG: -1 & KEYPAD_FLAG != 0, entao ele caia
-            // no ramo das teclas numericas e voltava a aparecer junto com elas -- desenhando um
-            // SEGUNDO botao de opcoes no canvas, atras do botao real da Activity.
+            // MENU=-1 must be checked before KEYPAD_FLAG, and stays available in every preset.
             if(b.bit == MENU) continue;
             int code = b.bit & 0xFF;
             if(b.phone){
@@ -176,13 +165,13 @@ public final class VirtualKeypad {
     //      J2ME Loader: arrastar uma tecla arrasta o bloco todo, pincar redimensiona o bloco todo.
     //      A qual grupo cada botao pertence depende do LAYOUT e e definido na hora de posicionar
     //      (no layout de telefone as softkeys fazem parte da cruz; no de gamepad sao bloco proprio).
-    public static final int GRP_NONE=0, GRP_DPAD=1, GRP_NUM=2, GRP_ACT=3, GRP_COUNT=4;
+    public static final int GRP_NONE=0, GRP_DPAD=1, GRP_NUM=2, GRP_ACT=3, GRP_SYSTEM=4, GRP_COUNT=5;
     // [orientacao][grupo] -- EM PE e DEITADO guardam arranjos SEPARADOS. Uma fracao boa em pe fica
     // pessima deitada (a tela troca de proporcao), entao reaproveitar o mesmo valor jogaria bloco
     // p/ fora da tela. E tambem o que o J2ME Loader faz: cada orientacao tem o seu lugar.
-    private final float[][] grpFracX = {{-1f,-1f,-1f,-1f},{-1f,-1f,-1f,-1f}};
-    private final float[][] grpFracY = {{-1f,-1f,-1f,-1f},{-1f,-1f,-1f,-1f}};
-    private final float[][] grpScale = {{ 1f, 1f, 1f, 1f},{ 1f, 1f, 1f, 1f}};
+    private final float[][] grpFracX = {{-1f,-1f,-1f,-1f,-1f},{-1f,-1f,-1f,-1f,-1f}};
+    private final float[][] grpFracY = {{-1f,-1f,-1f,-1f,-1f},{-1f,-1f,-1f,-1f,-1f}};
+    private final float[][] grpScale = {{ 1f, 1f, 1f, 1f, 1f},{ 1f, 1f, 1f, 1f, 1f}};
     /** 0 = em pe, 1 = deitado */
     private int ori(){ return deitado() ? 1 : 0; }
     /** ancora do grupo: posicao salva pelo usuario NESTA orientacao, ou o padrao do layout */
@@ -216,7 +205,7 @@ public final class VirtualKeypad {
                     layGrade(viewW*0.5f, cyG, cel);
                     layCruz (viewW*0.5f, cyG - gy*3.5f, cel);
                 }
-                layMenu(cel, menuX(cel, land, true)); return;
+                laySystemButtons(u); return;
             }
             case LAY_NUMBERS: {
                 float c2 = land ? m*0.165f : Math.min(viewW*0.22f, viewH*0.075f);
@@ -224,31 +213,31 @@ public final class VirtualKeypad {
                 layGrade(land ? viewW*0.20f : viewW*0.5f,
                          land ? cyL : viewH - c2*1.2f - c2*1.22f*1.5f, c2);
                 layCruz (viewW*0.5f, -9999f, c2);
-                layMenu(c2, viewW - c2*0.85f); return;
+                laySystemButtons(u); return;
             }
             case LAY_ARROWS: {
-                float c2 = land ? m*0.185f : Math.min(viewW*0.24f, viewH*0.085f);
+                float c2 = land ? m*0.185f : Math.min(viewW*0.22f, viewH*0.085f);
                 layCruz (land ? viewW*0.77f : viewW*0.5f,
                          land ? cyL : viewH - c2*2.0f, c2);
                 layGrade(viewW*0.5f, -9999f, c2);
-                layMenu(c2, land ? c2*0.85f : viewW - c2*0.85f); return;
+                laySystemButtons(u); return;
             }
             case LAY_NUM_CTRL: {                        // numeros a ESQUERDA
-                if(land){ layGrade(viewW*0.17f, cyL, cel); layCruz(viewW*0.83f, cyL, cel); layMenu(cel, menuX(cel, true, true)); return; }
+                if(land){ layGrade(viewW*0.17f, cyL, cel); layCruz(viewW*0.83f, cyL, cel); laySystemButtons(u); return; }
                 float c2 = Math.min(viewW*0.17f, viewH*0.050f);
                 layGrade(viewW*0.5f, viewH - u*8.2f - c2*1.22f*1.5f, c2);
                 layDpad (u*2.2f, viewH - u*2.2f, u);
                 layAcoes(viewW - u*2.4f, viewH - u*2.4f, u);
-                layMenu(u, menuX(u, false, false)); return;
+                laySystemButtons(u); return;
             }
             case LAY_CTRL_NUM: {                        // numeros a DIREITA (espelho do anterior)
-                if(land){ layCruz(viewW*0.17f, cyL, cel); layGrade(viewW*0.83f, cyL, cel); layMenu(cel, menuX(cel, true, true)); return; }
+                if(land){ layCruz(viewW*0.17f, cyL, cel); layGrade(viewW*0.83f, cyL, cel); laySystemButtons(u); return; }
                 float c2 = Math.min(viewW*0.17f, viewH*0.050f);
                 float cyG = viewH - c2*1.0f - c2*1.22f*1.5f;
                 layDpad (u*2.2f, cyG - c2*1.22f*2.2f - u*1.2f, u);
                 layAcoes(viewW - u*2.4f, cyG - c2*1.22f*2.2f - u*1.2f, u);
                 layGrade(viewW*0.5f, cyG, c2);
-                layMenu(u, menuX(u, false, false)); return;
+                laySystemButtons(u); return;
             }
             default: {                                  // LAY_AUTO e LAY_GAMEPAD
                 if(numbersVisible){
@@ -260,28 +249,27 @@ public final class VirtualKeypad {
                         layGrade(viewW*0.5f, cyG2, cel);
                         layCruz (viewW*0.5f, cyG2 - gy2*3.5f, cel);
                     }
-                    layMenu(cel, menuX(cel, land, true)); return;
+                    laySystemButtons(u); return;
                 }
                 float bx = land ? u*2.0f : u*2.2f;
                 float by = land ? cyL     : viewH - u*2.2f;
                 layDpad (bx, by, u);
-                // deitado a tela e baixa: o bloco de acao (5 botoes, 4u de altura) nao cabe centrado,
-                // o SAIR do topo saia da tela -- por isso desce um pouco em relacao ao d-pad.
-                layAcoes(viewW - (land ? u*2.2f : u*2.4f), land ? by + u*0.8f : by, u);
+                // Keep the action cluster a little lower than the d-pad in landscape.
+                layAcoes(viewW - u*2.4f, land ? by + u*0.8f : by, u);
                 layAndar(bx, by - u*2.6f, u);
-                layMenu(u, menuX(u, land, true)); return;
+                laySystemButtons(u); return;
             }
         }
     }
 
     /**
-     * Cruz de navegacao com o OK no meio e as 4 quinas (softkeys em cima, teclas do aparelho embaixo).
+     * Cruz de navegacao com o OK no meio, softkeys em cima e APAGAR embaixo à direita.
      * Tudo isso e UM grupo: arrastar qualquer peca move o bloco inteiro.
      */
     private void layCruz(float cx, float cy, float cel){
         int g = GRP_DPAD;
         float c = cel * grpS(g);
-        float ax = ancX(g, cx), ay = ancY(g, cy);
+        float ax = ancX(g, controlCenterX(cx, c)), ay = ancY(g, cy);
         float gx = c*1.32f, gy = c*1.22f;
         put(Screen.UP,    g, ax,    ay-gy, c);
         put(Screen.DOWN,  g, ax,    ay+gy, c);
@@ -290,7 +278,6 @@ public final class VirtualKeypad {
         put(Screen.FIRE,   g, ax,    ay,    c*1.05f);
         put(Screen.SELECT, g, ax-gx, ay-gy, c);
         put(Screen.FIRE2,  g, ax+gx, ay-gy, c);
-        put(KEYPAD_FLAG|PHONE_BACK,  g, ax-gx, ay+gy, c);
         put(KEYPAD_FLAG|PHONE_CLEAR, g, ax+gx, ay+gy, c);
     }
 
@@ -298,7 +285,7 @@ public final class VirtualKeypad {
     private void layGrade(float cx, float cy, float cel){
         int g = GRP_NUM;
         float c = cel * grpS(g);
-        float ax = ancX(g, cx), ay = (cy < -1000f) ? cy : ancY(g, cy);
+        float ax = ancX(g, controlCenterX(cx, c)), ay = (cy < -1000f) ? cy : ancY(g, cy);
         float gx = c*1.32f, gy = c*1.22f;
         for(int i=0;i<KEYPAD_CHARS.length;i++)
             put(KEYPAD_FLAG|KEYPAD_CHARS[i], g, ax + (i%3-1)*gx, ay + (i/3-1.5f)*gy, c);
@@ -316,8 +303,8 @@ public final class VirtualKeypad {
     }
 
     /**
-     * Bloco de acao: OK grande embaixo/direita, B ao lado, e acima deles BACK e APAGAR; o SAIR fica
-     * no topo da coluna. Ficava espalhado por viewW/viewH solto -- agora e um grupo ancorado, o que
+     * Bloco de acao: OK grande embaixo/direita, B ao lado, e acima deles BACK e APAGAR.
+     * Ficava espalhado por viewW/viewH solto -- agora e um grupo ancorado, o que
      * deixa o mesmo codigo servir em pe e deitado.
      */
     private void layAcoes(float cx, float cy, float u){
@@ -328,7 +315,6 @@ public final class VirtualKeypad {
         put(Screen.FIRE2,  g, ax - s*2.0f, ay,          s*1.2f);
         put(Screen.SELECT, g, ax,          ay - s*2.0f, s*1.2f);
         put(KEYPAD_FLAG|PHONE_CLEAR, g, ax - s*2.0f, ay - s*2.0f, s*1.2f);
-        put(KEYPAD_FLAG|PHONE_BACK,  g, ax,          ay - s*4.0f, s*1.2f);
     }
 
     /** as duas teclas de ANDAR (Bomb Jack): acompanham o d-pad, mas com posicao propria por botao */
@@ -339,12 +325,24 @@ public final class VirtualKeypad {
         placeInd(KEYPAD_FLAG|'3', ax + u*0.85f, ay, u*1.2f);
     }
 
-    private void layMenu(float base, float cx){
-        placeInd(MENU, cx, base*1.1f, base*1.15f);
+    /** Keep default three-column blocks clear of the menu/EXIT column's touch targets. */
+    private float controlCenterX(float cx, float cell){
+        float u = Math.min(viewW, viewH) * (deitado() ? 0.115f : 0.11f);
+        // Block half-width = 1.32 cells between centers + half a button.
+        return Math.min(cx, viewW - u*1.6f - cell*1.82f);
     }
-    /** x padrao do menu: canto direito; deitado com blocos NAS LATERAIS vai p/ o topo central. */
-    private float menuX(float base, boolean land, boolean lateral){
-        return (land && lateral) ? viewW*0.5f : viewW - base*0.85f;
+
+    /** Menu above EXIT in the bottom-right controls; move and scale the pair as one group. */
+    private void laySystemButtons(float u){
+        int g = GRP_SYSTEM;
+        float size = Math.min(u * 1.2f * grpS(g), Math.min(viewW, viewH) / 2.75f);
+        float margin = size * 0.25f;
+        float ax = ancX(g, viewW - size*0.75f), ay = ancY(g, viewH - size*0.75f);
+        // Keep the menu reachable even after moving/scaling the group in the editor.
+        ax = Math.max(size/2 + margin, Math.min(viewW - size/2 - margin, ax));
+        ay = Math.max(size*1.75f + margin, Math.min(viewH - size/2 - margin, ay));
+        put(MENU, g, ax, ay - size*1.25f, size);
+        put(KEYPAD_FLAG|PHONE_BACK, g, ax, ay, size);
     }
 
     /** posiciona um botao de GRUPO: guarda a qual grupo ele pertence NESTE layout */
@@ -410,16 +408,13 @@ public final class VirtualKeypad {
             if(x.bit==MENU) down = menuDown;
             else if((x.bit & KEYPAD_FLAG)!=0) down = s.keypadPressed(x.bit & 0xFF);
             else down = (s.getButtons() & x.bit)!=0;
-            boolean isMenu = (x.bit==MENU);
-            // botao de opcoes ocioso: fundo OPACO + borda accent -> sempre flutua visivel sobre o jogo
-            Paint p = editMode ? edit : (down ? fillDown : (isMenu ? fillMenu : fill));
-            Paint st = (isMenu && !editMode && !down) ? strokeMenu : stroke;
+            Paint p = editMode ? edit : (down ? fillDown : fill);
             if(x.round){
                 float rad = Math.min(x.rect.width(), x.rect.height())/2f, mx=x.rect.centerX(), my=x.rect.centerY();
-                c.drawCircle(mx,my,rad,p); c.drawCircle(mx,my,rad,st);
+                c.drawCircle(mx,my,rad,p); c.drawCircle(mx,my,rad,stroke);
             } else {
                 float r = x.rect.height()*0.18f;
-                c.drawRoundRect(x.rect, r, r, p); c.drawRoundRect(x.rect, r, r, st);
+                c.drawRoundRect(x.rect, r, r, p); c.drawRoundRect(x.rect, r, r, stroke);
             }
             if(x.icon!=0){ drawWalker(c, x.rect.centerX(), x.rect.centerY(),
                                       Math.min(x.rect.width(), x.rect.height()),
@@ -449,13 +444,18 @@ public final class VirtualKeypad {
     /**
      * Arrasta o BLOCO a que o botão pertence (d-pad, teclado numérico ou ações), mantendo a tecla
      * tocada sob o dedo. Antes só o d-pad andava em grupo e mover o teclado numérico exigia arrastar
-     * as 12 teclas uma a uma. Botão sem grupo (menu, teclas de andar) continua individual.
+     * as 12 teclas uma a uma. Botão sem grupo (teclas de andar) continua individual.
      */
     public void moveButton(Btn b, float cx, float cy){
         if(b.grp != GRP_NONE){
             int g = b.grp, o = ori();
             float ancoraX = grpFracX[o][g]>=0 ? grpFracX[o][g]*viewW : b.rect.centerX();
             float ancoraY = grpFracY[o][g]>=0 ? grpFracY[o][g]*viewH : b.rect.centerY();
+            if(g==GRP_SYSTEM){
+                // This group's anchor is EXIT's center, even when dragging MENU first.
+                ancoraX = b.rect.centerX();
+                ancoraY = b.rect.centerY() + (b.bit==MENU ? b.rect.height()*1.25f : 0f);
+            }
             float offX = b.rect.centerX() - ancoraX, offY = b.rect.centerY() - ancoraY;
             grpFracX[o][g] = clampf((cx-offX)/viewW);
             grpFracY[o][g] = clampf((cy-offY)/viewH);

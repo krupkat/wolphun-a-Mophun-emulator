@@ -61,8 +61,6 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     public void setLayoutPreset(int p){ keypad.setLayoutPreset(p); postInvalidate(); }
     /** mostra/oculta os botões de tecla numérica 2/3 (por jogo — ex.: Bomb Jack). */
     public void setShowNumbers(boolean on){ keypad.setShowNumbers(on); }
-    /** mostra/oculta o botão ≡ desenhado no canvas (usamos um Button real na Activity). */
-    public void setCanvasMenuVisible(boolean on){ keypad.setMenuVisible(on); }
 
     /** copia reduzida do ultimo frame renderizado (p/ miniatura/icone). null se ainda nao renderizou. */
     public Bitmap snapshot(int maxSide){
@@ -229,12 +227,14 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
                 break;
             }
             case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_POINTER_UP:
-            case MotionEvent.ACTION_CANCEL: {
+            case MotionEvent.ACTION_POINTER_UP: {
                 int idx = e.getActionIndex();
                 release(e.getPointerId(idx));
                 break;
             }
+            case MotionEvent.ACTION_CANCEL:
+                releaseAll();
+                break;
         }
         return true;
     }
@@ -286,6 +286,8 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         if(hit == prev) return;
         releaseCode(prev);                                   // solta o botão/tecla anterior
         if(hit==VirtualKeypad.MENU){
+            // A second finger may still be holding a game key when the menu opens.
+            releaseAll();
             menuDown=true; pointerBit.put(pid, hit);
             if(menuListener!=null) menuListener.onMenu();
         } else if((hit & VirtualKeypad.KEYPAD_FLAG)!=0){
@@ -300,6 +302,11 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     private void release(int pid){
         releaseCode(pointerBit.get(pid, 0));
         pointerBit.delete(pid);
+    }
+
+    private void releaseAll(){
+        for(int i=0; i<pointerBit.size(); i++) releaseCode(pointerBit.valueAt(i));
+        pointerBit.clear();
     }
 
     // solta um "código" de botão: MENU, tecla numérica (KEYPAD_FLAG|ascii) ou bit mophun.

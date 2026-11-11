@@ -3,15 +3,9 @@ package com.manedsoftware.wolphun;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.Toast;
 import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
@@ -56,34 +50,8 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
         view.setWalkKeys(PrefsConfig.walkKeys(gameName));   // 2/3 = andar esq/dir (Bomb Jack)
         view.setLayoutPreset(PrefsConfig.getLayoutPreset(this, gameName));
         view.setShowNumbers(PrefsConfig.getNumberKeys(this, gameName));   // botões 2/3 (default ON no Bomb Jack)
-        view.setCanvasMenuVisible(false);           // usamos o BOTAO REAL abaixo (View garantida), nao o ≡ do canvas
-
-        // botao de opcoes = View REAL sobreposta (garantido de renderizar em qualquer celular, diferente do canvas)
-        FrameLayout container = new FrameLayout(this);
-        container.addView(view, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        Button menuBtn = new Button(this);
-        menuBtn.setText("≡");                  // ≡
-        menuBtn.setTextColor(Color.WHITE);
-        menuBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        menuBtn.setTextSize(22);
-        menuBtn.setPadding(0,0,0,0);
-        menuBtn.setMinWidth(0); menuBtn.setMinHeight(0);
-        menuBtn.setMinimumWidth(0); menuBtn.setMinimumHeight(0);
-        menuBtn.setElevation(dp(8));                // acima da SurfaceView em qualquer aparelho
-        GradientDrawable bg = new GradientDrawable();
-        bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(0xCC000000);                    // circulo escuro semi-opaco
-        bg.setStroke(dp(2), 0xFFE8451F);            // borda accent (laranja)
-        menuBtn.setBackground(bg);
-        menuBtn.setOnClickListener(v -> showMenu());
-        int sz = dp(52);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(sz, sz);
-        lp.gravity = Gravity.TOP | Gravity.END;     // canto superior direito
-        lp.topMargin = dp(48);                      // um pouco para baixo (fora da barra de status)
-        lp.rightMargin = dp(10);
-        container.addView(menuBtn, lp);
-        menuBtn.bringToFront();
-        setContentView(container);
+        // Menu and EXIT belong to the virtual controls, not an overlay over the game.
+        setContentView(view);
         SystemBars.apply(this);
         // Android 16 no longer calls Activity.onBackPressed for targetSdk 36.
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true){

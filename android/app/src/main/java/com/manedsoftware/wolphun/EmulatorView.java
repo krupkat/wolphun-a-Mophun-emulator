@@ -24,7 +24,11 @@ import wolphun.Screen;
  */
 public final class EmulatorView extends SurfaceView implements SurfaceHolder.Callback, InputManager.InputDeviceListener {
 
-    public interface MenuListener { void onMenu(); }
+    public interface MenuListener {
+        void onMenu();
+        void onSaveState();
+        void onLoadState();
+    }
     /** recebe o bitmap da captura (ou null se falhou). Chamado na THREAD DE RENDER. */
     public interface CaptureCallback { void onCaptured(Bitmap bmp); }
 
@@ -43,6 +47,8 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     private final SparseIntArray pointerBit = new SparseIntArray();
     private volatile boolean surfaceReady = false;
     private volatile boolean menuDown = false;
+    // Survives clearInput/focus loss: one menu activation per touch gesture.
+    private boolean menuTouchTriggered = false;
     private MenuListener menuListener;
 
     private Thread renderThread;
@@ -234,6 +240,7 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     @Override public boolean onTouchEvent(MotionEvent e){
         if(scr==null) return true;
         if(editMode) return onEditTouch(e);
+        if(e.getActionMasked() == MotionEvent.ACTION_DOWN) menuTouchTriggered = false;
         switch(e.getActionMasked()){
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN: {
@@ -307,6 +314,9 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         input.set("touch:" + pid, 0);
         if(prev == VirtualKeypad.MENU) menuDown = false;
         if(hit==VirtualKeypad.MENU){
+            // Opening a dialog clears pointer tracking, but must not re-arm this gesture.
+            if(menuTouchTriggered) return;
+            menuTouchTriggered = true;
             // A second finger may still be holding a game key when the menu opens.
             clearInput();
             menuDown=true; pointerBit.put(pid, hit);
@@ -354,8 +364,6 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
             case KeyEvent.KEYCODE_BUTTON_B: return Screen.FIRE2;
             case KeyEvent.KEYCODE_BUTTON_X:
             case KeyEvent.KEYCODE_BUTTON_SELECT: return Screen.SELECT;
-            case KeyEvent.KEYCODE_BUTTON_L1: return VirtualKeypad.KEYPAD_FLAG | '2';
-            case KeyEvent.KEYCODE_BUTTON_R1: return VirtualKeypad.KEYPAD_FLAG | '3';
             default: return 0;
         }
     }
@@ -374,6 +382,16 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
             if(down && event.getRepeatCount() == 0 && !editMode){
                 clearInput();
                 if(menuListener != null) menuListener.onMenu();
+            }
+            return true;
+        }
+        if(key == KeyEvent.KEYCODE_BUTTON_L1 || key == KeyEvent.KEYCODE_BUTTON_R1){
+            if(down && event.getRepeatCount() == 0 && !event.isCanceled() && !editMode){
+                clearInput();
+                if(menuListener != null){
+                    if(key == KeyEvent.KEYCODE_BUTTON_R1) menuListener.onSaveState();
+                    else menuListener.onLoadState();
+                }
             }
             return true;
         }

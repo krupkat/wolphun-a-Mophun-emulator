@@ -105,6 +105,14 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
         runOnUiThread(new Runnable(){ public void run(){ showMenu(); } });
     }
 
+    @Override public void onSaveState(){
+        if(session != null && !isFinishing() && !endShown) doSave();
+    }
+
+    @Override public void onLoadState(){
+        if(session != null && !isFinishing() && !endShown) doLoad();
+    }
+
     private boolean endShown = false;
     // tela quando o jogo termina por conta propria (mesma ideia do desktop onGameEnded)
     private void showGameEnded(){
@@ -119,7 +127,32 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
             .show();
     }
 
+    private AlertDialog gameMenu;
+    private int pauseDialogs;
+    private boolean activityResumed;
+
+    private void updatePauseState(){
+        if(session == null) return;
+        if(!activityResumed || pauseDialogs > 0 || endShown || isFinishing()
+                || (view != null && view.isEditMode())) session.pause();
+        else session.resume();
+    }
+
+    // A child dialog opens before its parent dismisses; retain the pause across both.
+    private void showPausedDialog(AlertDialog dialog){
+        pauseDialogs++;
+        if(view != null) view.clearInput();
+        updatePauseState();
+        dialog.setOnDismissListener(d -> {
+            if(dialog == gameMenu) gameMenu = null;
+            pauseDialogs--;
+            updatePauseState();
+        });
+        dialog.show();
+    }
+
     private void showMenu(){
+        if(isFinishing() || gameMenu != null) return;
         if(view != null) view.clearInput();
         final boolean numOn = PrefsConfig.getNumberKeys(this, gameName);
         final boolean temPh = session!=null && !session.phoneKeysUsed().isEmpty();
@@ -129,7 +162,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
             Lang.t("gw.numkeys")+(numOn?"  ✓":""),
             Lang.t("gw.phonekeys")+(temPh ? (phOn?"  ✓":"") : "  —"),
             Lang.t("gw.screenshot"), Lang.t("gw.close") };
-        new AlertDialog.Builder(this)
+        gameMenu = new AlertDialog.Builder(this)
             .setTitle(gameName)
             .setItems(items, (d, which) -> {
                 switch(which){
@@ -145,7 +178,8 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
                 }
             })
             .setNegativeButton(Lang.t("gw.resume"), null)   // listener null = fecha o menu e RETOMA o jogo (por isso "Resume", nao "Back to library")
-            .show();
+            .create();
+        showPausedDialog(gameMenu);
     }
 
     // liga/desliga os botões de tecla numérica 2/3 (por jogo) e persiste
@@ -167,7 +201,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
         return (p>=0 && p<VirtualKeypad.LAY_COUNT) ? p : 0;
     }
     private void chooseLayout(){
-        new AlertDialog.Builder(this)
+        showPausedDialog(new AlertDialog.Builder(this)
             .setTitle(Lang.t("gw.layout"))
             .setSingleChoiceItems(layoutNames(), layoutAtual(), (d, which) -> {
                 PrefsConfig.setLayoutPreset(this, gameName, which);
@@ -179,7 +213,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
                 toast(layoutNames()[which]);
             })
             .setNegativeButton(Lang.t("btn.cancel"), null)
-            .show();
+            .create());
     }
 
     // liga/desliga os botões das teclas do aparelho C(204) / SAIR(203) -- por jogo e persistido
@@ -205,11 +239,12 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
     // ---- modo de edição do teclado (mover/redimensionar botões, salvo por jogo) ----
     private void enterEditMode(){
         view.setEditMode(true);
+        updatePauseState();
         toast(Lang.t("gw.edithint"));
     }
     private void handleBack(){
         if(view!=null && view.isEditMode()){
-            new AlertDialog.Builder(this)
+            showPausedDialog(new AlertDialog.Builder(this)
                 .setTitle(Lang.t("gw.editkeys"))
                 .setPositiveButton(Lang.t("gw.save"), (d,w) -> {
                     PrefsConfig.setKeypad(this, gameName, view.exportKeypad()); view.setEditMode(false); toast(Lang.t("gw.save")); })
@@ -217,7 +252,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
                     view.resetKeypad(); PrefsConfig.setKeypad(this, gameName, null); view.setEditMode(false); toast(Lang.t("gw.reset")); })
                 .setNegativeButton(Lang.t("btn.cancel"), (d,w) -> {
                     view.importKeypad(PrefsConfig.getKeypad(this, gameName)); view.setEditMode(false); })
-                .show();
+                .create());
             return;
         }
         finish();
@@ -228,12 +263,12 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
     private Integer shotPendente;        // modo escolhido, esperando a permissao de escrita
 
     private void chooseScreenshot(){
-        new AlertDialog.Builder(this)
+        showPausedDialog(new AlertDialog.Builder(this)
             .setTitle(Lang.t("gw.screenshot"))
             .setItems(new String[]{ Lang.t("shot.game"), Lang.t("shot.full") },
                       (d, which) -> takeScreenshot(which == 1))
             .setNegativeButton(Lang.t("btn.cancel"), null)
-            .show();
+            .create());
     }
 
     private void takeScreenshot(final boolean comControles){
@@ -294,8 +329,10 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
     private int dp(int v){ return Math.round(v * getResources().getDisplayMetrics().density); }
 
     @Override protected void onPause(){
+        activityResumed = false;
         if(view != null) view.clearInput();
-        super.onPause(); saveThumbnail(); if(session!=null) session.pause();
+        updatePauseState();
+        super.onPause(); saveThumbnail();
     }
 
     // captura um frame do gameplay como miniatura/icone do jogo na biblioteca
@@ -311,7 +348,11 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
             fos.close();
         } catch(Throwable t){ /* miniatura e opcional */ }
     }
-    @Override protected void onResume(){ super.onResume(); if(session!=null) session.resume(); }
+    @Override protected void onResume(){
+        super.onResume();
+        activityResumed = true;
+        updatePauseState();
+    }
     @Override protected void onDestroy(){
         super.onDestroy();
         if(session!=null) session.stop();

@@ -104,7 +104,7 @@ runs inside each tick rather than just capping frames.
 
 - **Physical controllers** — during gameplay, the D-pad controls directions, A is
   the main action/confirm, B is the secondary action/right softkey, X and SELECT
-  are the left softkey, L1/R1 send phone keypad 2/3, and START opens the emulator
+  are the left softkey, R1 saves state, L1 loads state, and START opens the emulator
   menu. Y, L2/R2 and HOME have no game binding. Uses Android's button labels;
   controllers with a different printed layout may differ. Supports D-pad hat
   axes and D-pad key events, including diagonals. Touch controls remain available.

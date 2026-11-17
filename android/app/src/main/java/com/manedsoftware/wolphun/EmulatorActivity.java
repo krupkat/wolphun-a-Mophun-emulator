@@ -120,6 +120,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
     }
 
     private void showMenu(){
+        if(view != null) view.clearInput();
         final boolean numOn = PrefsConfig.getNumberKeys(this, gameName);
         final boolean temPh = session!=null && !session.phoneKeysUsed().isEmpty();
         final boolean phOn   = temPh && PrefsConfig.getPhoneKeys(this, gameName, true);
@@ -284,6 +285,7 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
         catch(Throwable t){ toast(Lang.t("err.loadstate")+" "+t); }
     }
     private void doRestart(){
+        if(view != null) view.clearInput();
         Intent i = getIntent();
         finish();
         startActivity(i);
@@ -291,7 +293,10 @@ public final class EmulatorActivity extends ComponentActivity implements Emulato
     private void toast(String s){ Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
     private int dp(int v){ return Math.round(v * getResources().getDisplayMetrics().density); }
 
-    @Override protected void onPause(){ super.onPause(); saveThumbnail(); if(session!=null) session.pause(); }
+    @Override protected void onPause(){
+        if(view != null) view.clearInput();
+        super.onPause(); saveThumbnail(); if(session!=null) session.pause();
+    }
 
     // captura um frame do gameplay como miniatura/icone do jogo na biblioteca
     private void saveThumbnail(){

@@ -102,6 +102,13 @@ runs inside each tick rather than just capping frames.
 
 ### Android
 
+- **Physical controllers** — during gameplay, the D-pad controls directions, A is
+  the main action/confirm, B is the secondary action/right softkey, X and SELECT
+  are the left softkey, L1/R1 send phone keypad 2/3, and START opens the emulator
+  menu. Y, L2/R2 and HOME have no game binding. Uses Android's button labels;
+  controllers with a different printed layout may differ. Supports D-pad hat
+  axes and D-pad key events, including diagonals. Touch controls remain available.
+  Analog sticks and configurable bindings are not implemented yet.
 - **Vibration** — games that ask for it (Honey Cave 2 on damage) now vibrate, with an
   on/off switch in Settings.
 - **On-screen keypad layouts** — auto, phone keypad, numbers, arrows, gamepad and mixed
@@ -174,6 +181,7 @@ wolphun-android-build
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 # Display-geometry regression tests (JDK only; no Maven dependencies):
 bash android/tests/run-viewport-tests.sh
+bash android/tests/run-input-tests.sh
 # ROM decryption tests (optionally pass paths to local .mpn files):
 bash android/tests/run-crypt-tests.sh
 

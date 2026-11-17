@@ -94,4 +94,7 @@ pkgs.mkShellNoCC {
     echo 'ROM import: adb push game.mpn /sdcard/Download/; then tap + in the app and select it.'
     echo 'Emulator flags: export NIX_ANDROID_EMULATOR_FLAGS="-gpu software" (or other emulator options).'
   '';
+
+  # sudo setfacl -m u:"$(id -un)":rw /dev/bus/usb/003/006
+  NIX_ANDROID_EMULATOR_FLAGS="-usb-passthrough vendorid=0x2dc8,productid=0x3022";
 }

@@ -9,6 +9,9 @@ import android.graphics.Rect;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.MotionEvent;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.hardware.input.InputManager;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import wolphun.Screen;
@@ -19,13 +22,18 @@ import wolphun.Screen;
  * virtual por cima. Isso desacopla o desenho do vFlipScreen do jogo — resolve jogos
  * (como o HC2) cujo loop de menu para de flipar. O toque alimenta os bits de botão.
  */
-public final class EmulatorView extends SurfaceView implements SurfaceHolder.Callback {
+public final class EmulatorView extends SurfaceView implements SurfaceHolder.Callback, InputManager.InputDeviceListener {
 
     public interface MenuListener { void onMenu(); }
     /** recebe o bitmap da captura (ou null se falhou). Chamado na THREAD DE RENDER. */
     public interface CaptureCallback { void onCaptured(Bitmap bmp); }
 
     private Screen scr;
+    private final GameInput input = new GameInput((code, down) -> {
+        if(scr == null) return;
+        if((code & VirtualKeypad.KEYPAD_FLAG) != 0) scr.setKeypad(code & 0xff, down);
+        else scr.setButtonBit(code, down);
+    });
     private Bitmap frame;
     private final Rect src = new Rect();
     private final Rect dst = new Rect();
@@ -51,7 +59,7 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
     private volatile boolean editMode = false;
     private VirtualKeypad.Btn dragBtn;
     private float pinchStartDist, pinchStartScale;
-    public void setEditMode(boolean on){ editMode = on; }
+    public void setEditMode(boolean on){ clearInput(); editMode = on; }
     public boolean isEditMode(){ return editMode; }
     public void importKeypad(String s){ keypad.importLayout(s); }
     public String exportKeypad(){ return keypad.exportLayout(); }
@@ -96,9 +104,11 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         blit.setDither(false);
         getHolder().addCallback(this);
         setFocusable(true);
+        setFocusableInTouchMode(true);
+        requestFocus();
     }
 
-    public void attach(Screen s){ this.scr = s; }
+    public void attach(Screen s){ clearInput(); this.scr = s; }
     public void setMenuListener(MenuListener l){ this.menuListener = l; }
 
     // ---- SurfaceHolder ----
@@ -294,36 +304,123 @@ public final class EmulatorView extends SurfaceView implements SurfaceHolder.Cal
         int hit = keypad.hitTest(x, y);
         int prev = pointerBit.get(pid, 0);
         if(hit == prev) return;
-        releaseCode(prev);                                   // solta o botão/tecla anterior
+        input.set("touch:" + pid, 0);
+        if(prev == VirtualKeypad.MENU) menuDown = false;
         if(hit==VirtualKeypad.MENU){
             // A second finger may still be holding a game key when the menu opens.
-            releaseAll();
+            clearInput();
             menuDown=true; pointerBit.put(pid, hit);
             if(menuListener!=null) menuListener.onMenu();
         } else if((hit & VirtualKeypad.KEYPAD_FLAG)!=0){
-            scr.setKeypad(hit & 0xFF, true); pointerBit.put(pid, hit);
+            input.set("touch:" + pid, hit); pointerBit.put(pid, hit);
         } else if(hit!=0){
-            scr.setButtonBit(hit, true); pointerBit.put(pid, hit);
+            input.set("touch:" + pid, hit); pointerBit.put(pid, hit);
         } else {
             pointerBit.delete(pid);
         }
     }
 
     private void release(int pid){
-        releaseCode(pointerBit.get(pid, 0));
+        if(pointerBit.get(pid, 0) == VirtualKeypad.MENU) menuDown = false;
+        input.set("touch:" + pid, 0);
         pointerBit.delete(pid);
     }
 
     private void releaseAll(){
-        for(int i=0; i<pointerBit.size(); i++) releaseCode(pointerBit.valueAt(i));
+        for(int i=0; i<pointerBit.size(); i++) input.set("touch:" + pointerBit.keyAt(i), 0);
         pointerBit.clear();
+        menuDown = false;
     }
 
-    // solta um "código" de botão: MENU, tecla numérica (KEYPAD_FLAG|ascii) ou bit mophun.
-    // MENU=-1 é checado ANTES do KEYPAD_FLAG (pois -1 & KEYPAD_FLAG != 0).
-    private void releaseCode(int code){
-        if(code==VirtualKeypad.MENU) menuDown=false;
-        else if((code & VirtualKeypad.KEYPAD_FLAG)!=0) scr.setKeypad(code & 0xFF, false);
-        else if(code!=0) scr.setButtonBit(code, false);
+    public void clearInput(){
+        input.clear();
+        pointerBit.clear();
+        menuDown = false;
     }
+
+    private static boolean isController(InputDevice device){
+        return device != null && (device.supportsSource(InputDevice.SOURCE_GAMEPAD)
+                || device.supportsSource(InputDevice.SOURCE_JOYSTICK)
+                || device.supportsSource(InputDevice.SOURCE_DPAD));
+    }
+
+    private static int buttonCode(int key){
+        switch(key){
+            case KeyEvent.KEYCODE_DPAD_UP: return Screen.UP;
+            case KeyEvent.KEYCODE_DPAD_DOWN: return Screen.DOWN;
+            case KeyEvent.KEYCODE_DPAD_LEFT: return Screen.LEFT;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return Screen.RIGHT;
+            case KeyEvent.KEYCODE_BUTTON_A: return Screen.FIRE;
+            case KeyEvent.KEYCODE_BUTTON_B: return Screen.FIRE2;
+            case KeyEvent.KEYCODE_BUTTON_X:
+            case KeyEvent.KEYCODE_BUTTON_SELECT: return Screen.SELECT;
+            case KeyEvent.KEYCODE_BUTTON_L1: return VirtualKeypad.KEYPAD_FLAG | '2';
+            case KeyEvent.KEYCODE_BUTTON_R1: return VirtualKeypad.KEYPAD_FLAG | '3';
+            default: return 0;
+        }
+    }
+
+    @Override public boolean onKeyDown(int key, KeyEvent event){
+        return handleControllerKey(key, event, true) || super.onKeyDown(key, event);
+    }
+
+    @Override public boolean onKeyUp(int key, KeyEvent event){
+        return handleControllerKey(key, event, false) || super.onKeyUp(key, event);
+    }
+
+    private boolean handleControllerKey(int key, KeyEvent event, boolean down){
+        if(scr == null || !isController(event.getDevice())) return false;
+        if(key == KeyEvent.KEYCODE_BUTTON_START){
+            if(down && event.getRepeatCount() == 0 && !editMode){
+                clearInput();
+                if(menuListener != null) menuListener.onMenu();
+            }
+            return true;
+        }
+        int code = buttonCode(key);
+        if(code == 0) return false;
+        if(!editMode && (!down || event.getRepeatCount() == 0))
+            input.set("pad:" + event.getDeviceId() + ":key:" + key, down ? code : 0);
+        return true;
+    }
+
+    @Override public boolean onGenericMotionEvent(MotionEvent event){
+        if(scr != null && event.isFromSource(InputDevice.SOURCE_JOYSTICK)
+                && event.getActionMasked() == MotionEvent.ACTION_MOVE){
+            if(!editMode){
+                String prefix = "pad:" + event.getDeviceId() + ":hat:";
+                input.set(prefix + "x", GameInput.hat(event.getAxisValue(MotionEvent.AXIS_HAT_X), Screen.LEFT, Screen.RIGHT));
+                input.set(prefix + "y", GameInput.hat(event.getAxisValue(MotionEvent.AXIS_HAT_Y), Screen.UP, Screen.DOWN));
+            }
+            return true; // Trigger axes are intentionally ignored; use digital button events.
+        }
+        return super.onGenericMotionEvent(event);
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused){
+        super.onWindowFocusChanged(focused);
+        if(!focused) clearInput();
+    }
+
+    @Override protected void onFocusChanged(boolean focused, int direction, Rect previous){
+        super.onFocusChanged(focused, direction, previous);
+        if(!focused) clearInput();
+    }
+
+    @Override protected void onAttachedToWindow(){
+        super.onAttachedToWindow();
+        ((InputManager)getContext().getSystemService(Context.INPUT_SERVICE))
+                .registerInputDeviceListener(this, null);
+    }
+
+    @Override protected void onDetachedFromWindow(){
+        clearInput();
+        ((InputManager)getContext().getSystemService(Context.INPUT_SERVICE))
+                .unregisterInputDeviceListener(this);
+        super.onDetachedFromWindow();
+    }
+
+    @Override public void onInputDeviceAdded(int id){}
+    @Override public void onInputDeviceChanged(int id){ input.removeDevice(id); }
+    @Override public void onInputDeviceRemoved(int id){ input.removeDevice(id); }
 }
